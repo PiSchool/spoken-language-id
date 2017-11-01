@@ -3,7 +3,8 @@ import argparse
 import logging as log
 
 import tensorflow as tf
-from models import LanguidRNN
+
+from models.rnn import LanguidRNN
 from data import TCData
 
 
