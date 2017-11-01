@@ -32,7 +32,7 @@ class Model(object):
             log.info("Loading {} model from {}".format(self.name, load_path))
             saver.restore(self.session, load_path)
 
-    def initialize_if_fresh(self, local_only=False):
+    def initialize_if_fresh(self):
         if not self.initialized:
             log.info("Initializing...")
             self.session.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
