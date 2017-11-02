@@ -15,11 +15,11 @@ class LanguidCombo(BaseModel):
         # A sequence of spectrograms representing a sample audio, (batch_size, timesteps, bins)
         self.input_sgram = tf.placeholder(
             tf.float32,
-            shape=[self.conf['batch_size'], self.conf['spectrogram_width'], self.conf['spectrogram_bins']]
+            shape=[None, self.conf['spectrogram_width'], self.conf['spectrogram_bins']]
         )
 
         # One-hot vector representing the target language (batch_size, language_count)
-        self.output_lang = tf.placeholder(tf.int8, shape=[self.conf['batch_size'], self.conf['language_count']])
+        self.output_lang = tf.placeholder(tf.int8, shape=[None, self.conf['language_count']])
 
         # Switch time and freq axis
         input_reshaped = tf.transpose(self.input_sgram, perm=[0, 2, 1])
@@ -48,8 +48,8 @@ class LanguidCombo(BaseModel):
         # The shape was (batch, bins, timesteps, filters), and should become (batch, timesteps, features)
         # TODO because of difference in pooling I get (32, 6, 844, 32) and orig. has (32, 8, 852, 32)
         input_gru = tf.transpose(norm_pool4, perm=[0, 2, 3, 1])
-        input_shape = tf.shape(input_gru)
-        input_gru = tf.reshape(input_gru, [self.conf['batch_size'], input_gru.get_shape()[1], tf.reduce_prod(input_shape[2:])])
+        input_shape = input_gru.get_shape()
+        input_gru = tf.reshape(input_gru, [self.conf['batch_size'], input_shape[1], input_shape[2] * input_shape[3]])
 
         with tf.variable_scope("GRU"):
             gru_cell = tf.contrib.rnn.GRUCell(num_units=self.conf['gru_num_units'])
