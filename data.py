@@ -49,17 +49,22 @@ class TCData(object):
             start, end = -end, start
         return self.images[start:end], self.labels[start:end]
 
-    def make_batches(self, use_percent=100):
+    def make_batches(self, use_percent=100, tail=False, give_all=False):
         """Generator for producing batches that look like this:
         [['000.png', '001.png'], [[0, 0, 1], [0, 1, 0]]]
-        """
-        batch_start = 0
 
+        use_percent -- what percentage of data to return
+        tail -- take date from the end
+        give_all -- returns all data as a single batch, ignores self.batch_size
+        """
         # Limit to use_percent percent of input data
-        usable_images, usable_labels = self.get_limited_data(use_percent)
+        usable_images, usable_labels = self.get_limited_data(use_percent, tail)
+
+        batch_start = 0
+        batch_size = self.batch_size if not give_all else len(usable_images)
 
         while batch_start < len(usable_images):
-            batch_end = min(batch_start + self.batch_size, len(usable_images) - 1)
+            batch_end = min(batch_start + batch_size, len(usable_images) - 1)
             images = []
             for audio_name in usable_images[batch_start:batch_end]:
                 # Load spectrograms as images
@@ -74,4 +79,4 @@ class TCData(object):
                 labels.append(one_hot)
             yield images, labels
 
-            batch_start += self.batch_size
+            batch_start += batch_size
