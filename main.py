@@ -5,6 +5,7 @@ import logging as log
 import tensorflow as tf
 
 from models.rnn import LanguidRNN
+from models.combo import LanguidCombo
 from data import TCData
 
 
@@ -20,6 +21,7 @@ if __name__ == '__main__':
         'save_every': 1,
         'print_every': 1,
         'spectrogram_bins': 128,
+        'spectrogram_width': 858,
         'language_count': 176,
         'gru_num_units': 500,
         'batch_size': 32,
