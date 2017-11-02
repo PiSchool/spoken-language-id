@@ -60,6 +60,9 @@ class LanguidCombo(BaseModel):
         # The prediction layer
         dense = tf.layers.dense(inputs=norm_output_gru, units=data.label_count)
 
+        # The prediction
+        self.prediction = tf.nn.softmax(dense)
+
         self.loss = tf.losses.softmax_cross_entropy(self.output_lang, dense)
         self.optimizer = tf.train.MomentumOptimizer(
             learning_rate=self.conf['learning_rate'],

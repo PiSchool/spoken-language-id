@@ -33,6 +33,9 @@ class LanguidRNN(BaseModel):
         # The prediction layer
         dense = tf.layers.dense(inputs=norm_output_gru, units=data.label_count)
 
+        # The prediction
+        self.prediction = tf.nn.softmax(dense)
+
         # TODO should we add l2 regularization?
         self.loss = tf.losses.softmax_cross_entropy(self.output_lang, dense)
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
