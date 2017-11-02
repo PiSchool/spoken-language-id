@@ -5,15 +5,12 @@ import logging as log
 import tensorflow as tf
 import numpy as np
 
-from base import BaseModel
+from .base import BaseModel
 
 
 class LanguidRNN(BaseModel):
     def __init__(self, conf, data, training=True):
-        self.name = "LanguidRNN"
-        self.session = tf.Session()
-        self.conf = conf
-        self.initialized = False
+        super().__init__(conf)
 
         # A sequence of spectrograms representing a sample audio, (batch_size, timesteps, bins)
         self.input_sgram = tf.placeholder(tf.float32, shape=[None, 858, self.conf['spectrogram_bins']])
@@ -101,6 +98,3 @@ class LanguidRNN(BaseModel):
 
                 if iteration % self.conf['save_every'] == 0:
                     self.save()
-
-    def close(self):
-        self.session.close()

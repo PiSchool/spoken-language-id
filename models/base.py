@@ -4,8 +4,14 @@ import logging as log
 import tensorflow as tf
 
 
-class BaseModel(object):
+class BaseModel:
     """Abstract model."""
+
+    def __init__(self, conf, name=None):
+        self.session = tf.Session()
+        self.name = name or self.__class__.__name__
+        self.conf = conf
+        self.initialized = False
 
     def save(self):
         """Save the model parameters."""
@@ -37,3 +43,6 @@ class BaseModel(object):
 
     def train(self):
         raise NotImplementedError
+
+    def close(self):
+        self.session.close()
