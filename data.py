@@ -6,10 +6,10 @@ from PIL import Image
 
 
 class TCData(object):
-    def __init__(self, conf):
-        self.png_dir = conf['png_dir']
-        self.label_filename = conf['label_filename']
-        self.batch_size = conf['batch_size']
+    def __init__(self, image_dir, label_filename, conf):
+        self.image_dir = image_dir
+        self.label_filename = label_filename
+        self.batch_size = conf.batch_size
         self.language_set = []
         self.labels = []
         self.images = []
@@ -21,25 +21,22 @@ class TCData(object):
             # Skip the header
             next(csv_reader)
 
-            for image, label in csv_reader:
-                self.images.append(image)
-                self.labels.append(label)
+            for audio, label in csv_reader:
+                image_path = os.path.join(self.image_dir, '{}.png'.format(audio.split('.')[0]))
+                self.images.append(image_path)
 
-        self.language_set = sorted(set(self.labels))
+                # Store labels in a global
+                if label not in self.language_set:
+                    self.language_set.append(label)
+                label_index = self.language_set.index(label)
 
-    @property
-    def label_count(self):
-        return len(self.language_set)
-
-    @property
-    def sample_count(self):
-        return len(self.images)
+                self.labels.append(label_index)
 
     def lang_index(self, lang):
         """Return the index of the given language."""
         return self.language_set.index(lang)
 
-    def get_limited_data(self, use_percent, tail=False):
+    def get_data(self, use_percent, tail=False):
         """Return the first (or the last) use_percent percent of data and
         its labels.
         """
@@ -48,35 +45,3 @@ class TCData(object):
         if tail:
             start, end = -end, start
         return self.images[start:end], self.labels[start:end]
-
-    def make_batches(self, use_percent=100, tail=False, give_all=False):
-        """Generator for producing batches that look like this:
-        [['000.png', '001.png'], [[0, 0, 1], [0, 1, 0]]]
-
-        use_percent -- what percentage of data to return
-        tail -- take date from the end
-        give_all -- returns all data as a single batch, ignores self.batch_size
-        """
-        # Limit to use_percent percent of input data
-        usable_images, usable_labels = self.get_limited_data(use_percent, tail)
-
-        batch_start = 0
-        batch_size = self.batch_size if not give_all else len(usable_images)
-
-        while batch_start < len(usable_images):
-            batch_end = min(batch_start + batch_size, len(usable_images) - 1)
-            images = []
-            for audio_name in usable_images[batch_start:batch_end]:
-                # Load spectrograms as images
-                image_name = '{}.png'.format(audio_name.split('.')[0])
-                image = Image.open(os.path.join(self.png_dir, image_name))
-                images.append(np.transpose(np.array(image)[:128, :858]) / 256.)
-            labels = []
-            for label in usable_labels[batch_start:batch_end]:
-                # Convert strings to one-hot vectors
-                one_hot = np.zeros(len(self.language_set))
-                one_hot[self.lang_index(label)] = 1
-                labels.append(one_hot)
-            yield images, labels
-
-            batch_start += batch_size
