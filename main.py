@@ -132,8 +132,11 @@ def run_experiment(argv=None):
 
     if FLAGS.model == 'combo':
         params = combo_params
+        tf.logging.info("Running the COMBO model")
     else:
         params = rnn_params
+        tf.logging.info("Running the RNN model")
+    tf.logging.info(params)
 
     # Parameters can be overridden from a JSON file
     if FLAGS.params:
