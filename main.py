@@ -1,8 +1,10 @@
 import json
+from functools import partial
 
 import tensorflow as tf
 
 from models.combo import model_fn as languid_combo_model_fn
+from models.rnn import model_fn as languid_rnn_model_fn
 from data import TCData
 
 
@@ -84,8 +86,8 @@ def get_inputs(image_dir, label_file, params, validation=False):
     return input_fn, init_hook
 
 
-def experiment_fn(run_config, params):
-    model = tf.estimator.Estimator(languid_combo_model_fn, params=params, config=run_config)
+def experiment_fn(model_fn, run_config, params):
+    model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
 
     train_input_fn, train_input_hook = get_inputs(FLAGS.image_dir, FLAGS.label_file, params)
     eval_input_fn, eval_input_hook = get_inputs(FLAGS.image_dir, FLAGS.label_file, params, validation=True)
@@ -132,9 +134,11 @@ def run_experiment(argv=None):
 
     if FLAGS.model == 'combo':
         params = combo_params
+        model_fn = languid_combo_model_fn
         tf.logging.info("Running the COMBO model")
     else:
         params = rnn_params
+        model_fn = languid_rnn_model_fn
         tf.logging.info("Running the RNN model")
     tf.logging.info(params)
 
@@ -155,7 +159,7 @@ def run_experiment(argv=None):
     )
 
     tf.contrib.learn.learn_runner.run(
-        experiment_fn=experiment_fn,
+        experiment_fn=partial(experiment_fn, model_fn),
         run_config=run_config,
         schedule="train_and_evaluate",
         hparams=params,
