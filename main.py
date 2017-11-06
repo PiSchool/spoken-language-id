@@ -56,16 +56,18 @@ def get_inputs(image_dir, label_file, params, validation=False):
 
     def input_fn():
         # Use part of the training set for validation
-        use_percent = 100 - params.eval_percent
         tail = False
+        use_percent = 100 - params.eval_percent
+        epochs = params.train_epochs
         if validation:
-            use_percent = params.eval_percent
             tail = True
+            use_percent = params.eval_percent
+            epochs = params.eval_epochs
 
         usable_data = data.get_data(use_percent=use_percent, tail=tail)
         dataset = tf.data.Dataset.from_tensor_slices(usable_data)
         dataset = dataset.map(input_parser)
-        dataset = dataset.repeat(params.epochs)
+        dataset = dataset.repeat(epochs)
         dataset = dataset.batch(params.batch_size)
 
         iterator = dataset.make_initializable_iterator()
@@ -89,7 +91,7 @@ def experiment_fn(run_config, params):
         min_eval_frequency=params.eval_frequency,
         train_monitors=[train_input_hook],
         eval_hooks=[eval_input_hook],
-        eval_steps=2
+        eval_steps=params.eval_steps
     )
     return experiment
 
@@ -105,7 +107,9 @@ def run_experiment(argv=None):
         momentum=0.9,
         eval_percent=5,
         eval_frequency=100,
-        epochs=1,
+        eval_steps=None,
+        eval_epochs=1,
+        train_epochs=40,
     )
 
     if FLAGS.params:
