@@ -109,12 +109,6 @@ def run_experiment(argv=None):
         spectrogram_width=858,
         language_count=176,
         batch_size=16,
-    )
-
-    # Default parameters for the CNN + RNN model
-    combo_params = tf.contrib.training.HParams(
-        **common_params,
-        gru_num_units=128,
         learning_rate=0.003,
         momentum=0.9,
         eval_percent=5,
@@ -122,6 +116,12 @@ def run_experiment(argv=None):
         eval_steps=None,
         eval_epochs=1,
         train_epochs=40,
+    )
+
+    # Default parameters for the CNN + RNN model
+    combo_params = tf.contrib.training.HParams(
+        **common_params,
+        gru_num_units=128,
     )
 
     # Default parameters for the RNN model
