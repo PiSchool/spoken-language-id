@@ -28,6 +28,11 @@ tf.app.flags.DEFINE_string(
     default_value=None,
     docstring='A JSON file containing hyperparameters.'
 )
+tf.app.flags.DEFINE_string(
+    flag_name='model',
+    default_value='combo',
+    docstring='Which model to use (rnn, combo).'
+)
 
 
 def get_inputs(image_dir, label_file, params, validation=False):
@@ -55,11 +60,12 @@ def get_inputs(image_dir, label_file, params, validation=False):
         return image_data, label
 
     def input_fn():
-        # Use part of the training set for validation
+        # Leave some data for the validation set
         tail = False
         use_percent = 100 - params.eval_percent
         epochs = params.train_epochs
         if validation:
+            # Use part of the training set for validation (take samples from the end)
             tail = True
             use_percent = params.eval_percent
             epochs = params.eval_epochs
@@ -97,12 +103,18 @@ def experiment_fn(run_config, params):
 
 
 def run_experiment(argv=None):
-    params = tf.contrib.training.HParams(
+    # Parameters common to all models
+    common_params = dict(
         spectrogram_bins=128,
         spectrogram_width=858,
         language_count=176,
-        gru_num_units=500,
         batch_size=16,
+    )
+
+    # Default parameters for the CNN + RNN model
+    combo_params = tf.contrib.training.HParams(
+        **common_params,
+        gru_num_units=128,
         learning_rate=0.003,
         momentum=0.9,
         eval_percent=5,
@@ -112,12 +124,26 @@ def run_experiment(argv=None):
         train_epochs=40,
     )
 
+    # Default parameters for the RNN model
+    rnn_params = tf.contrib.training.HParams(
+        **common_params,
+        gru_num_units=500,
+    )
+
+    if FLAGS.model == 'combo':
+        params = combo_params
+    else:
+        params = rnn_params
+
+    # Parameters can be overridden from a JSON file
     if FLAGS.params:
         with open(FLAGS.params) as params_file:
             params.parse_json(params_file.read())
 
     run_config = tf.contrib.learn.RunConfig(
         model_dir=FLAGS.model_dir,
+
+        # Compute a summary point once every this many steps
         save_summary_steps=100,
 
         # After how many steps of training checkpoints should be saved
