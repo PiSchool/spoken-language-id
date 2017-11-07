@@ -140,12 +140,12 @@ def run_experiment(argv=None):
         params = rnn_params
         model_fn = languid_rnn_model_fn
         tf.logging.info("Running the RNN model")
-    tf.logging.info(params)
 
     # Parameters can be overridden from a JSON file
     if FLAGS.params:
         with open(FLAGS.params) as params_file:
             params.parse_json(params_file.read())
+    tf.logging.info(params)
 
     run_config = tf.contrib.learn.RunConfig(
         model_dir=FLAGS.model_dir,
