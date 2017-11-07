@@ -41,7 +41,11 @@ def model_fn(features, labels, mode, params):
     optimizer = tf.train.MomentumOptimizer(
         learning_rate=params.learning_rate,
         momentum=params.momentum
-    ).minimize(loss, global_step=tf.contrib.framework.get_global_step())
+    )
+
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+        train_op = optimizer.minimize(loss, global_step=tf.contrib.framework.get_global_step())
 
     # Evaluate the accuracy of the model
     accuracy = tf.metrics.accuracy(labels=labels, predictions=pred_classes)
@@ -53,6 +57,6 @@ def model_fn(features, labels, mode, params):
         mode=mode,
         predictions=pred_classes,
         loss=loss,
-        train_op=optimizer,
+        train_op=train_op,
         eval_metric_ops={'accuracy': accuracy}
     )
