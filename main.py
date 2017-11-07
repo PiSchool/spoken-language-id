@@ -124,12 +124,14 @@ def run_experiment(argv=None):
     combo_params = tf.contrib.training.HParams(
         **common_params,
         gru_num_units=128,
+        dropout=0,
     )
 
     # Default parameters for the RNN model
     rnn_params = tf.contrib.training.HParams(
         **common_params,
         gru_num_units=500,
+        dropout=0,
     )
 
     if FLAGS.model == 'combo':

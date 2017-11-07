@@ -20,6 +20,9 @@ def languid_rnn(features, training, params):
         output_gru, final_state = tf.nn.dynamic_rnn(gru_cell, norm_output_gru, dtype=tf.float32)
         norm_output_gru = tf.layers.batch_normalization(final_state, training=training)
 
+        if params.dropout:
+            norm_output_gru = tf.layers.dropout(norm_output_gru, rate=params.dropout, training=training)
+
     # The prediction layer
     dense = tf.layers.dense(inputs=norm_output_gru, units=params.language_count)
 
