@@ -41,6 +41,13 @@ def model_fn(features, labels, mode, params):
         return tf.estimator.EstimatorSpec(mode, predictions=pred_classes)
 
     loss = tf.losses.softmax_cross_entropy(onehot_labels, logits)
+    if params.regularize:
+        # Add L2 regularization if configured
+        l2_regularizer = tf.contrib.layers.l2_regularizer(params.regularize)
+        loss += tf.contrib.layers.apply_regularization(
+            l2_regularizer, tf.trainable_variables()
+        )
+
     optimizer = tf.train.MomentumOptimizer(
         learning_rate=params.learning_rate,
         momentum=params.momentum

@@ -125,6 +125,7 @@ def run_experiment(argv=None):
         **common_params,
         gru_num_units=128,
         dropout=0,
+        regularize=0,
     )
 
     # Default parameters for the RNN model
@@ -132,6 +133,7 @@ def run_experiment(argv=None):
         **common_params,
         gru_num_units=500,
         dropout=0,
+        regularize=0,
     )
 
     if FLAGS.model == 'combo':
