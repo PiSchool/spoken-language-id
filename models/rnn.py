@@ -56,8 +56,9 @@ def model_fn(features, labels, mode, params):
     # Evaluate the accuracy of the model
     accuracy = tf.metrics.accuracy(labels=labels, predictions=pred_classes)
 
-    tf.summary.scalar('train_loss', loss)
-    tf.summary.scalar('train_accuracy', tf.reduce_mean(accuracy))
+    if mode == tf.estimator.ModeKeys.TRAIN:
+        tf.summary.scalar('train_loss', loss)
+        tf.summary.scalar('train_accuracy', tf.reduce_mean(accuracy))
 
     return tf.estimator.EstimatorSpec(
         mode=mode,
