@@ -54,7 +54,7 @@ def model_fn(features, labels, mode, params):
     optimizer = tf.train.MomentumOptimizer(
         learning_rate=params.learning_rate,
         momentum=params.momentum
-    ).minimize(loss, global_step=tf.contrib.framework.get_global_step())
+    ).minimize(loss, global_step=tf.train.get_global_step())
 
     # Evaluate the accuracy of the model
     accuracy = tf.metrics.accuracy(labels=labels, predictions=pred_classes)
