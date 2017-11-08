@@ -14,23 +14,27 @@ def languid_combo(features, training, params):
         # TODO move CNN layer creation to a method
         conv1 = tf.layers.conv2d(input_reshaped, filters=16, kernel_size=7, activation=tf.nn.relu)
         pool1 = tf.layers.max_pooling2d(conv1, pool_size=3, strides=(2, 1), padding='same')
-        norm_pool1 = tf.layers.batch_normalization(pool1, training=training)
+        if params.normalize:
+            pool1 = tf.contrib.layers.layer_norm(pool1)
 
         conv2 = tf.layers.conv2d(norm_pool1, filters=32, kernel_size=5, activation=tf.nn.relu)
         pool2 = tf.layers.max_pooling2d(conv2, pool_size=3, strides=(2, 1), padding='same')
-        norm_pool2 = tf.layers.batch_normalization(pool2, training=training)
+        if params.normalize:
+            pool2 = tf.contrib.layers.layer_norm(pool2)
 
         conv3 = tf.layers.conv2d(norm_pool2, filters=32, kernel_size=3, activation=tf.nn.relu)
         pool3 = tf.layers.max_pooling2d(conv3, pool_size=3, strides=(2, 1), padding='same')
-        norm_pool3 = tf.layers.batch_normalization(pool3, training=training)
+        if params.normalize:
+            pool3 = tf.contrib.layers.layer_norm(pool3)
 
         conv4 = tf.layers.conv2d(norm_pool3, filters=32, kernel_size=3, activation=tf.nn.relu)
         pool4 = tf.layers.max_pooling2d(conv4, pool_size=3, strides=(2, 1), padding='same')
-        norm_pool4 = tf.layers.batch_normalization(pool4, training=training)
+        if params.normalize:
+            pool4 = tf.contrib.layers.layer_norm(pool4)
 
     # The shape was (batch, bins, timesteps, filters), and should become (batch, timesteps, features)
     # TODO because of difference in pooling I get (32, 6, 844, 32) and orig. has (32, 8, 852, 32)
-    input_gru = tf.transpose(norm_pool4, perm=[0, 2, 3, 1])
+    input_gru = tf.transpose(pool4, perm=[0, 2, 3, 1])
     input_shape = input_gru.get_shape()
     input_gru = tf.reshape(input_gru, [-1, input_shape[1], input_shape[2] * input_shape[3]])
 

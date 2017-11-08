@@ -126,6 +126,7 @@ def run_experiment(argv=None):
         gru_num_units=128,
         dropout=0,
         regularize=0,
+        normalize=True,
     )
 
     # Default parameters for the RNN model
@@ -134,6 +135,7 @@ def run_experiment(argv=None):
         gru_num_units=500,
         dropout=0,
         regularize=0,
+        normalize=True,
     )
 
     if FLAGS.model == 'combo':
@@ -168,7 +170,7 @@ def run_experiment(argv=None):
         schedule="train_and_evaluate",
         hparams=params,
     )
-    
+
 
 if __name__ == '__main__':
     # Logging and warning
