@@ -35,6 +35,11 @@ tf.app.flags.DEFINE_string(
     default_value='combo',
     docstring='Which model to use (rnn, combo).'
 )
+tf.app.flags.DEFINE_string(
+    flag_name='predict',
+    default_value=None,
+    docstring='Path to a png spectrogram for which to predict language.'
+)
 
 
 def get_inputs(image_dir, label_file, params, validation=False):
@@ -86,25 +91,7 @@ def get_inputs(image_dir, label_file, params, validation=False):
     return input_fn, init_hook
 
 
-def experiment_fn(model_fn, run_config, params):
-    model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
-
-    train_input_fn, train_input_hook = get_inputs(FLAGS.image_dir, FLAGS.label_file, params)
-    eval_input_fn, eval_input_hook = get_inputs(FLAGS.image_dir, FLAGS.label_file, params, validation=True)
-
-    experiment = tf.contrib.learn.Experiment(
-        estimator=model,
-        train_input_fn=train_input_fn,
-        eval_input_fn=eval_input_fn,
-        min_eval_frequency=params.eval_frequency,
-        train_monitors=[train_input_hook],
-        eval_hooks=[eval_input_hook],
-        eval_steps=params.eval_steps
-    )
-    return experiment
-
-
-def run_experiment(argv=None):
+def get_params():
     # Parameters common to all models
     common_params = dict(
         spectrogram_bins=128,
@@ -163,17 +150,74 @@ def run_experiment(argv=None):
         # Note that evaluation can only run after a new checkpoint is saved
         save_checkpoints_steps=params.eval_frequency,
     )
+    return model_fn, run_config, params
 
-    tf.contrib.learn.learn_runner.run(
-        experiment_fn=partial(experiment_fn, model_fn),
-        run_config=run_config,
-        schedule="train_and_evaluate",
-        hparams=params,
+
+def experiment_fn(model_fn, run_config, params):
+    model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
+
+    train_input_fn, train_input_hook = get_inputs(FLAGS.image_dir, FLAGS.label_file, params)
+    eval_input_fn, eval_input_hook = get_inputs(FLAGS.image_dir, FLAGS.label_file, params, validation=True)
+
+    experiment = tf.contrib.learn.Experiment(
+        estimator=model,
+        train_input_fn=train_input_fn,
+        eval_input_fn=eval_input_fn,
+        min_eval_frequency=params.eval_frequency,
+        train_monitors=[train_input_hook],
+        eval_hooks=[eval_input_hook],
+        eval_steps=params.eval_steps
     )
+    return experiment
+
+
+def train_or_predict(argv=None):
+    model_fn, run_config, params = get_params()
+
+    if FLAGS.predict:
+        # Predict the label for a single sample
+        predict_sample = FLAGS.predict
+        model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
+        predict_input_fn, predict_input_hook = get_inputs(FLAGS.image_dir, FLAGS.label_file, params)
+
+        # Load data
+        data = TCData(FLAGS.image_dir, FLAGS.label_file, params)
+        data.load_data()
+
+        # Data processing function
+        def input_fn():
+            img_file = tf.read_file(FLAGS.predict)
+            image = tf.image.decode_png(img_file, channels=0)
+            image = tf.cast(image, tf.float32)
+            image_data = tf.transpose(image[:128, :858] / 256)
+            return image_data
+
+        iterator = model.predict(input_fn=input_fn)
+        prediction = next(iterator)
+
+        # Generate a list of (lang_id, probability) pairs
+        pred_probs = [(data.language_set[l], p * 100) for l, p in enumerate(prediction['probs'])]
+
+        # Sort them by probability, take 10 most likely
+        pred_probs = sorted(pred_probs, key=lambda x: x[1])[-10:]
+
+        # Format them
+        pred_probs = ["{}: {:.2f}%".format(l, p) for l, p in pred_probs]
+
+        tf.logging.info("Predicted language: {}".format(data.language_set[prediction['class']]))
+        tf.logging.info("\n".join(pred_probs))
+    else:
+        # Train
+        tf.contrib.learn.learn_runner.run(
+            experiment_fn=partial(experiment_fn, model_fn),
+            run_config=run_config,
+            schedule="train_and_evaluate",
+            hparams=params,
+        )
 
 
 if __name__ == '__main__':
     # Logging and warning
     tf.logging.set_verbosity(tf.logging.INFO)
 
-    tf.app.run(main=run_experiment)
+    tf.app.run(main=train_or_predict)

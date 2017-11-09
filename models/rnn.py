@@ -34,15 +34,20 @@ def languid_rnn(features, training, params):
 
 def model_fn(features, labels, mode, params):
     logits = languid_rnn(features, training=mode == tf.estimator.ModeKeys.TRAIN, params=params)
-    onehot_labels = tf.one_hot(labels, depth=params.language_count)
 
     # The prediction
     pred_classes = tf.argmax(logits, axis=-1)
+    pred_probabilities = tf.nn.softmax(logits)
+    predictions = {
+        'class': pred_classes,
+        'probs': pred_probabilities,
+    }
 
     # If predicting, no need to define loss etc.
     if mode == tf.estimator.ModeKeys.PREDICT:
-        return tf.estimator.EstimatorSpec(mode, predictions=pred_classes)
+        return tf.estimator.EstimatorSpec(mode, predictions=predictions)
 
+    onehot_labels = tf.one_hot(labels, depth=params.language_count)
     loss = tf.losses.softmax_cross_entropy(onehot_labels, logits)
     if params.regularize:
         # Add L2 regularization if configured
@@ -65,7 +70,7 @@ def model_fn(features, labels, mode, params):
 
     return tf.estimator.EstimatorSpec(
         mode=mode,
-        predictions=pred_classes,
+        predictions=predictions,
         loss=loss,
         train_op=optimizer,
         eval_metric_ops={'accuracy': accuracy}
