@@ -17,17 +17,17 @@ def languid_combo(features, training, params):
         if params.normalize:
             pool1 = tf.contrib.layers.layer_norm(pool1)
 
-        conv2 = tf.layers.conv2d(norm_pool1, filters=32, kernel_size=5, activation=tf.nn.relu)
+        conv2 = tf.layers.conv2d(pool1, filters=32, kernel_size=5, activation=tf.nn.relu)
         pool2 = tf.layers.max_pooling2d(conv2, pool_size=3, strides=(2, 1), padding='same')
         if params.normalize:
             pool2 = tf.contrib.layers.layer_norm(pool2)
 
-        conv3 = tf.layers.conv2d(norm_pool2, filters=32, kernel_size=3, activation=tf.nn.relu)
+        conv3 = tf.layers.conv2d(pool2, filters=32, kernel_size=3, activation=tf.nn.relu)
         pool3 = tf.layers.max_pooling2d(conv3, pool_size=3, strides=(2, 1), padding='same')
         if params.normalize:
             pool3 = tf.contrib.layers.layer_norm(pool3)
 
-        conv4 = tf.layers.conv2d(norm_pool3, filters=32, kernel_size=3, activation=tf.nn.relu)
+        conv4 = tf.layers.conv2d(pool3, filters=32, kernel_size=3, activation=tf.nn.relu)
         pool4 = tf.layers.max_pooling2d(conv4, pool_size=3, strides=(2, 1), padding='same')
         if params.normalize:
             pool4 = tf.contrib.layers.layer_norm(pool4)
