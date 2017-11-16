@@ -53,7 +53,7 @@ class TCData(object):
         img_file = tf.read_file(image_name)
         image = tf.image.decode_png(img_file, channels=0)
         image = tf.cast(image, tf.float32)
-        image_data = tf.transpose(image[:128, :858] / 256)
+        image_data = tf.transpose(image[:128, :] / 256.)
 
         if label is not None:
             label = tf.cast(label, tf.int32)
