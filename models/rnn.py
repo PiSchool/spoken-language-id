@@ -63,7 +63,7 @@ def model_fn(features, labels, mode, params):
     ).minimize(loss, global_step=tf.train.get_global_step())
 
     # Evaluate the accuracy of the model
-    accuracy = tf.metrics.accuracy(labels=labels, predictions=pred_classes)
+    accuracy, acc_op = tf.metrics.accuracy(labels=labels, predictions=pred_classes)
 
     if mode == tf.estimator.ModeKeys.TRAIN:
         tf.summary.scalar('train_loss', loss)
@@ -74,5 +74,5 @@ def model_fn(features, labels, mode, params):
         predictions=predictions,
         loss=loss,
         train_op=optimizer,
-        eval_metric_ops={'accuracy': accuracy}
+        eval_metric_ops={'accuracy': (accuracy, acc_op)}
     )

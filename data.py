@@ -2,6 +2,7 @@ import os
 import csv
 
 import numpy as np
+import tensorflow as tf
 from PIL import Image
 
 
@@ -45,3 +46,16 @@ class TCData(object):
         if tail:
             start, end = -end, start
         return self.images[start:end], self.labels[start:end]
+
+    @staticmethod
+    def instance_as_tensor(image_name, label=None):
+        """Convert a single training/prediction instance into a tensor."""
+        img_file = tf.read_file(image_name)
+        image = tf.image.decode_png(img_file, channels=0)
+        image = tf.cast(image, tf.float32)
+        image_data = tf.transpose(image[:128, :858] / 256)
+
+        if label is not None:
+            label = tf.cast(label, tf.int32)
+
+        return image_data, label

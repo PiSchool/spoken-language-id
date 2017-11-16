@@ -4,8 +4,9 @@ from functools import partial
 
 import tensorflow as tf
 
-from models.combo import model_fn as languid_combo_model_fn
-from models.rnn import model_fn as languid_rnn_model_fn
+from models.base import base_model_fn
+from models.combo import languid_combo as languid_combo_model
+from models.rnn import languid_rnn as languid_rnn_model
 from data import TCData
 
 
@@ -64,14 +65,6 @@ def get_inputs(image_dir, label_file, params, validation=False):
 
     init_hook = IteratorInitHook()
 
-    def input_parser(image_name, label):
-        img_file = tf.read_file(image_name)
-        image = tf.image.decode_png(img_file, channels=0)
-        image = tf.cast(image, tf.float32)
-        image_data = tf.transpose(image[:128, :858] / 256)
-        label = tf.cast(label, tf.int32)
-        return image_data, label
-
     def input_fn():
         # Leave some data for the validation set
         tail = False
@@ -85,7 +78,7 @@ def get_inputs(image_dir, label_file, params, validation=False):
 
         usable_data = data.get_data(use_percent=use_percent, tail=tail)
         dataset = tf.data.Dataset.from_tensor_slices(usable_data)
-        dataset = dataset.map(input_parser)
+        dataset = dataset.map(data.instance_as_tensor)
         dataset = dataset.repeat(epochs)
         dataset = dataset.batch(params.batch_size)
 
@@ -133,11 +126,11 @@ def get_params():
 
     if FLAGS.model == 'combo':
         params = combo_params
-        model_fn = languid_combo_model_fn
+        model_fn = partial(base_model_fn, languid_combo_model)
         tf.logging.info("Running the COMBO model")
     else:
         params = rnn_params
-        model_fn = languid_rnn_model_fn
+        model_fn = partial(base_model_fn, languid_rnn_model)
         tf.logging.info("Running the RNN model")
 
     # Parameters can be overridden from a JSON file
@@ -186,15 +179,7 @@ def predict_single(model_fn, run_config, params, png_path):
     data = TCData(FLAGS.image_dir, FLAGS.label_file, params)
     data.load_data()
 
-    # Data processing function
-    def input_fn():
-        img_file = tf.read_file(png_path)
-        image = tf.image.decode_png(img_file, channels=0)
-        image = tf.cast(image, tf.float32)
-        image_data = tf.transpose(image[:128, :858] / 256)
-        return image_data
-
-    iterator = model.predict(input_fn=input_fn)
+    iterator = model.predict(input_fn=lambda: data.instance_as_tensor(png_path))
     prediction = next(iterator)
 
     # Generate a list of (lang_id, probability) pairs
