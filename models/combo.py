@@ -2,7 +2,8 @@ import tensorflow as tf
 
 
 def languid_combo(features, training, params):
-    input_sgram = tf.reshape(features, [-1, params.spectrogram_width, params.spectrogram_bins])
+    batch_size = tf.shape(features)[0]
+    input_sgram = tf.reshape(features, [batch_size, -1, params.spectrogram_bins])
 
     # Switch time and freq axis
     input_reshaped = tf.transpose(input_sgram, perm=[0, 2, 1])
@@ -36,7 +37,7 @@ def languid_combo(features, training, params):
     # TODO because of difference in pooling I get (32, 6, 844, 32) and orig. has (32, 8, 852, 32)
     input_gru = tf.transpose(pool4, perm=[0, 2, 3, 1])
     input_shape = input_gru.get_shape()
-    input_gru = tf.reshape(input_gru, [-1, input_shape[1], input_shape[2] * input_shape[3]])
+    input_gru = tf.reshape(input_gru, tf.stack([batch_size, -1, input_shape[2] * input_shape[3]]))
 
     with tf.variable_scope("GRU"):
         gru_cell = tf.contrib.rnn.GRUCell(num_units=params.gru_num_units)

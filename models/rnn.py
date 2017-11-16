@@ -3,7 +3,8 @@ import tensorflow as tf
 
 def languid_rnn(features, training, params):
     # A sequence of spectrograms representing a sample audio, (batch_size, timesteps, bins)
-    input_sgram = tf.reshape(features, [-1, params.spectrogram_width, params.spectrogram_bins])
+    batch_size = tf.shape(features)[0]
+    input_sgram = tf.reshape(features, [batch_size, -1, params.spectrogram_bins])
     normal_input = tf.subtract(tf.multiply(input_sgram, 2), 1)
 
     with tf.variable_scope("GRU1"):
