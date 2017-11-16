@@ -1,3 +1,4 @@
+import os
 import json
 from functools import partial
 
@@ -39,6 +40,11 @@ tf.app.flags.DEFINE_string(
     flag_name='predict',
     default_value=None,
     docstring='Path to a png spectrogram for which to predict language.'
+)
+tf.app.flags.DEFINE_string(
+    flag_name='predict-dir',
+    default_value=None,
+    docstring='Predict language for all png spectrograms in the specified directory.'
 )
 
 
@@ -171,41 +177,52 @@ def experiment_fn(model_fn, run_config, params):
     return experiment
 
 
+def predict_single(model_fn, run_config, params, png_path):
+    """Predict the language given the path to a single spectrogram in png format."""
+    model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
+    predict_input_fn, predict_input_hook = get_inputs(FLAGS.image_dir, FLAGS.label_file, params)
+
+    # Load data
+    data = TCData(FLAGS.image_dir, FLAGS.label_file, params)
+    data.load_data()
+
+    # Data processing function
+    def input_fn():
+        img_file = tf.read_file(png_path)
+        image = tf.image.decode_png(img_file, channels=0)
+        image = tf.cast(image, tf.float32)
+        image_data = tf.transpose(image[:128, :858] / 256)
+        return image_data
+
+    iterator = model.predict(input_fn=input_fn)
+    prediction = next(iterator)
+
+    # Generate a list of (lang_id, probability) pairs
+    pred_probs = [(data.language_set[l], p * 100) for l, p in enumerate(prediction['probs'])]
+
+    # Sort them by probability, take 10 most likely
+    pred_probs = sorted(pred_probs, key=lambda x: x[1], reverse=True)[:10]
+
+    # Format them
+    pred_probs = ["{}: {:.2f}%".format(l, p) for l, p in pred_probs]
+
+    tf.logging.info("Predicting language for {}".format(png_path))
+    tf.logging.info("Predicted language: {}".format(data.language_set[prediction['class']]))
+    tf.logging.info("\n".join(pred_probs))
+
+
 def train_or_predict(argv=None):
     model_fn, run_config, params = get_params()
 
-    if FLAGS.predict:
+    if FLAGS.predict_dir:
+        filenames = os.listdir(FLAGS.predict_dir)
+        for filename in sorted(filenames):
+            if filename.endswith(".png"):
+                file_path = os.path.join(FLAGS.predict_dir, filename)
+                predict_single(model_fn, run_config, params, file_path)
+    elif FLAGS.predict:
         # Predict the label for a single sample
-        predict_sample = FLAGS.predict
-        model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
-        predict_input_fn, predict_input_hook = get_inputs(FLAGS.image_dir, FLAGS.label_file, params)
-
-        # Load data
-        data = TCData(FLAGS.image_dir, FLAGS.label_file, params)
-        data.load_data()
-
-        # Data processing function
-        def input_fn():
-            img_file = tf.read_file(FLAGS.predict)
-            image = tf.image.decode_png(img_file, channels=0)
-            image = tf.cast(image, tf.float32)
-            image_data = tf.transpose(image[:128, :858] / 256)
-            return image_data
-
-        iterator = model.predict(input_fn=input_fn)
-        prediction = next(iterator)
-
-        # Generate a list of (lang_id, probability) pairs
-        pred_probs = [(data.language_set[l], p * 100) for l, p in enumerate(prediction['probs'])]
-
-        # Sort them by probability, take 10 most likely
-        pred_probs = sorted(pred_probs, key=lambda x: x[1])[-10:]
-
-        # Format them
-        pred_probs = ["{}: {:.2f}%".format(l, p) for l, p in pred_probs]
-
-        tf.logging.info("Predicted language: {}".format(data.language_set[prediction['class']]))
-        tf.logging.info("\n".join(pred_probs))
+        predict_single(model_fn, run_config, params, FLAGS.predict)
     else:
         # Train
         tf.contrib.learn.learn_runner.run(
