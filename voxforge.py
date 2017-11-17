@@ -30,7 +30,7 @@ if __name__ == '__main__':
     args = make_args()
 
     log_file = open(args.output_log, 'w')
-    log_csv = csv.writer(log_file)
+    log_csv = csv.writer(log_file, lineterminator='\n')
     for lang_name, lang_code in languages.items():
         download_url = base_url.format(lang=lang_code, archive='')
 
