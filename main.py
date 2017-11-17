@@ -80,7 +80,10 @@ def get_inputs(image_dir, label_file, params, validation=False):
         dataset = tf.data.Dataset.from_tensor_slices(usable_data)
         dataset = dataset.map(data.instance_as_tensor)
         dataset = dataset.repeat(epochs)
-        dataset = dataset.batch(params.batch_size)
+        dataset = dataset.padded_batch(
+            params.batch_size,
+            padded_shapes=([params.spectrogram_bins, None, None], [])
+        )
 
         iterator = dataset.make_initializable_iterator()
         init_hook.iterator_init = iterator.initializer
