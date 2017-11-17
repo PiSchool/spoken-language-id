@@ -78,6 +78,7 @@ def get_inputs(image_dir, label_file, params, validation=False):
 
         usable_data = data.get_data(use_percent=use_percent, tail=tail)
         dataset = tf.data.Dataset.from_tensor_slices(usable_data)
+        dataset = dataset.shuffle(params.shuffle_buffer_size)
         dataset = dataset.map(data.instance_as_tensor)
         dataset = dataset.repeat(epochs)
         dataset = dataset.padded_batch(
@@ -106,6 +107,7 @@ def get_params():
         eval_steps=None,
         eval_epochs=1,
         train_epochs=40,
+        shuffle_buffer_size=500,
     )
 
     # Default parameters for the CNN + RNN model
