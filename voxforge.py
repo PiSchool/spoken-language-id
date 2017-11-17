@@ -19,11 +19,11 @@ def make_args():
 if __name__ == '__main__':
     base_url = 'http://www.repository.voxforge1.org/downloads/{lang}/Trunk/Audio/Original/48kHz_16bit/{archive}'
     languages = {
-        #'Italian': 'it',
-        #'French': 'fr',
-        #'Portuguese': 'pt',
-        #'German': 'de',
-        #'English': 'SpeechCorpus',
+        'Italian': 'it',
+        'French': 'fr',
+        'Portuguese': 'pt',
+        'German': 'de',
+        'English': 'SpeechCorpus',
         'Spanish': 'es',
     }
 
@@ -74,7 +74,7 @@ if __name__ == '__main__':
                             member.name = '{archive}-{wav}'.format(archive=archive_name, wav=wav_filename.group(2))
 
                             # Skip if exists
-                            if os.path.isfile(os.path.join(args.output_dir, memeber.name)):
+                            if os.path.isfile(os.path.join(args.output_dir, member.name)):
                                 continue
 
                             tar.extract(member, path=args.output_dir)
