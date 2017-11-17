@@ -82,7 +82,7 @@ def get_inputs(image_dir, label_file, params, validation=False):
         dataset = dataset.repeat(epochs)
         dataset = dataset.padded_batch(
             params.batch_size,
-            padded_shapes=([params.spectrogram_bins, None, None], [])
+            padded_shapes=([None, None, None], [])
         )
 
         iterator = dataset.make_initializable_iterator()
