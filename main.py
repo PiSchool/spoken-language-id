@@ -97,7 +97,6 @@ def get_params():
     # Parameters common to all models
     common_params = dict(
         spectrogram_bins=128,
-        spectrogram_width=858,
         language_count=176,
         batch_size=16,
         learning_rate=0.003,
