@@ -3,6 +3,7 @@ import re
 import csv
 import argparse
 from collections import Counter
+from collections import OrderedDict
 
 import wget
 import requests
@@ -38,7 +39,7 @@ if __name__ == '__main__':
 
         max_per_lang = 1500
         index_url = base_index_url.format(lang=lang_code)
-        params = {lang_code: ''}
+        params = OrderedDict({lang_code: ''})
         page_start = 0
         page_found = True
 
