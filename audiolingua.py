@@ -54,7 +54,6 @@ if __name__ == '__main__':
             page_start += 5
 
             recordings = re.findall(r'\<article.+?(auteur\d+).+?href="([\w\/\-\._]+\.mp3)".+?\</article\>', resp.text, flags=re.DOTALL)
-            print(page_start, len(recordings))
             for user, recording_url in recordings:
                 if user_archives[user] >= args.per_user:
                     # We have enough archives of this user
@@ -63,7 +62,7 @@ if __name__ == '__main__':
                 user_archives[user] += 1
 
                 # Download the archive
-                recording_name = re.match(r'.+\/([^\/]+)', recording_url)[1]
+                recording_name = re.match(r'.+\/([^\/]+)', recording_url).group(1)
                 recording_filename = os.path.join(args.output_dir, recording_name)
                 download_url = '{}/{}'.format(base_url, recording_url)
                 wget.download(download_url, out=recording_filename)
