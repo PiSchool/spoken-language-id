@@ -16,6 +16,7 @@ grep "\(,1\|,2\|,3\|,4\|,5\)$" $in_file | grep German | awk -F, '{print $1","$2}
 grep "\(,1\|,2\|,3\|,4\|,5\)$" $in_file | grep English | awk -F, '{print $1","$2}' | head -n $per_lang >> $out_file
 grep "\(,1\|,2\|,3\|,4\|,5\)$" $in_file | grep Spanish | awk -F, '{print $1","$2}' | head -n $per_lang >> $out_file
 grep "\(,1\|,2\|,3\|,4\|,5\)$" $in_file | grep Italian | awk -F, '{print $1","$2}' | head -n $per_lang >> $out_file
+grep "\(,1\|,2\|,3\|,4\|,5\)$" $in_file | grep French | awk -F, '{print $1","$2}' | head -n $per_lang >> $out_file
 grep "\(,1\|,2\|,3\|,4\|,5\)$" $in_file | grep Portuguese | awk -F, '{print $1","$2}' | head -n $per_lang >> $out_file
 
 # Shuffled so that user files are grouped together, but languages are mixed
