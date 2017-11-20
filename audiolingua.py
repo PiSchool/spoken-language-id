@@ -36,6 +36,7 @@ if __name__ == '__main__':
     for lang_name, lang_code in languages.items():
         print("Downloading archives for {}.".format(lang_name))
 
+        max_per_lang = 1500
         index_url = base_index_url.format(lang=lang_code)
         params = {lang_code: ''}
         page_start = 0
@@ -48,10 +49,13 @@ if __name__ == '__main__':
             params['debut_articles'] = page_start
             resp = requests.get(index_url, params=params)
 
-            if resp.status_code != 200:
+            if resp.status_code != 200 or page_start > max_per_lang:
                 # The end of pagination
                 break
             page_start += 5
+
+            # Extract item count
+            max_per_lang = int(re.search(r'(\d+) ressources', resp.text).group(1))
 
             recordings = re.findall(r'\<article.+?(auteur\d+).+?href="([\w\/\-\._]+\.mp3)".+?\</article\>', resp.text, flags=re.DOTALL)
             for user, recording_url in recordings:
