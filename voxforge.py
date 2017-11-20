@@ -89,7 +89,7 @@ if __name__ == '__main__':
 
                         tar.extract(member, path=args.output_dir)
                         #print("Writing {}".format(member.name))
-                        log_csv.writerow([member.name, lang_name, per_archive_count])
+                        log_csv.writerow([member.name, lang_name, user, per_archive_count])
                         log_file.flush()
 
                         if per_archive_count >= args.per_archive:
