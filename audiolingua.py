@@ -69,5 +69,6 @@ if __name__ == '__main__':
                 print()
 
                 log_csv.writerow([recording_name, lang_name, user, user_archives[user]])
+                log_file.flush()
         print("Recordings by {} users.".format(len(user_archives)))
     log_file.close()
