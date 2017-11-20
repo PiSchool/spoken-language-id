@@ -12,8 +12,8 @@ import requests
 
 def make_args():
     parser = argparse.ArgumentParser(description="VoxForge dataset downloader.")
-    parser.add_argument('--per-user', default=4, type=int, help="Limit the number of archives per user")
-    parser.add_argument('--per-archive', default=100, type=int, help="Limit the number of files per archive")
+    parser.add_argument('--per-user', default=50, type=int, help="Limit the number of recordings per user")
+    parser.add_argument('--per-user-archives', default=5, type=int, help="Limit the number of archives per user")
     parser.add_argument('-d', '--output-dir', default='voxforge_samples', help="Directory to output wave files to")
     parser.add_argument('-l', '--output-log', default='voxforge_samples.csv', help="Metadata about downloaded files")
     return parser.parse_args()
@@ -50,8 +50,9 @@ if __name__ == '__main__':
 
         # Pick a single archive from each user
         user_archives = Counter()
+        user_recordings = Counter()
         for archive, user in archives:
-            if user_archives[user] >= args.per_user:
+            if user_archives[user] >= args.per_user_archives:
                 # We have enough archives of this user
                 continue
 
@@ -77,6 +78,11 @@ if __name__ == '__main__':
                     # Find a member that is a wave file, e.g. archive-name/wav/it-0123.wav
                     wav_filename = re.match(r'([\w-]+)/.+/([\w-]+\.wav)', member.name)
                     if wav_filename is not None:
+                        if user_recordings[user] >= args.per_user:
+                            # We have enough files from this user
+                            break
+
+                        user_recordings[user] += 1
                         per_archive_count += 1
                         archive_name = wav_filename.group(1)
 
@@ -88,12 +94,8 @@ if __name__ == '__main__':
                             continue
 
                         tar.extract(member, path=args.output_dir)
-                        log_csv.writerow([member.name, lang_name, user, user_archives[user]])
+                        log_csv.writerow([member.name, lang_name, user, user_recordings[user]])
                         log_file.flush()
-
-                        if per_archive_count >= args.per_archive:
-                            # We have enough files from this archive
-                            break
             print("Extracted {} files from {}".format(per_archive_count, archive))
 
         print("Recordings by {} users.".format(len(user_archives)))
