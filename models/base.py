@@ -34,8 +34,8 @@ def base_model_fn(model, features, labels, mode, params):
     accuracy, accuracy_op = tf.metrics.accuracy(labels=labels, predictions=pred_classes)
 
     if mode == tf.estimator.ModeKeys.TRAIN:
-        tf.summary.scalar('train_loss', loss)
-        tf.summary.scalar('train_accuracy', tf.reduce_mean(accuracy))
+        tf.identity(accuracy_op, name='train_acc')
+        tf.summary.scalar('train_accuracy', accuracy_op)
 
     return tf.estimator.EstimatorSpec(
         mode=mode,
