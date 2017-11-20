@@ -12,8 +12,8 @@ import requests
 
 def make_args():
     parser = argparse.ArgumentParser(description="VoxForge dataset downloader.")
-    parser.add_argument('--per-user', default=4, help="Limit the number of archives per user")
-    parser.add_argument('--per-archive', default=100, help="Limit the number of files per archive")
+    parser.add_argument('--per-user', default=4, type=int, help="Limit the number of archives per user")
+    parser.add_argument('--per-archive', default=100, type=int, help="Limit the number of files per archive")
     parser.add_argument('-d', '--output-dir', default='voxforge_samples', help="Directory to output wave files to")
     parser.add_argument('-l', '--output-log', default='voxforge_samples.csv', help="Metadata about downloaded files")
     return parser.parse_args()
@@ -31,6 +31,7 @@ if __name__ == '__main__':
     }
 
     args = make_args()
+    os.makedirs(args.output_dir, exist_ok=True)
 
     log_file = open(args.output_log, 'w')
     log_csv = csv.writer(log_file, lineterminator='\n')
@@ -50,12 +51,11 @@ if __name__ == '__main__':
         # Pick a single archive from each user
         user_archives = Counter()
         for archive, user in archives:
-            # We have not seen any archives of this user yet, add it
-            user_archives[user] += 1
-
-            if user_archives[user] > args.per_user:
+            if user_archives[user] >= args.per_user:
                 # We have enough archives of this user
                 continue
+
+            user_archives[user] += 1
 
             # Download an archive
             download_url = base_url.format(lang=lang_code, archive=archive)
@@ -88,8 +88,7 @@ if __name__ == '__main__':
                             continue
 
                         tar.extract(member, path=args.output_dir)
-                        #print("Writing {}".format(member.name))
-                        log_csv.writerow([member.name, lang_name, user, per_archive_count])
+                        log_csv.writerow([member.name, lang_name, user, user_archives[user]])
                         log_file.flush()
 
                         if per_archive_count >= args.per_archive:
