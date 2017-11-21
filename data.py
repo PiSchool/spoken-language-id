@@ -11,9 +11,12 @@ class TCData(object):
         self.image_dir = image_dir
         self.label_filename = label_filename
         self.batch_size = conf.batch_size
-        self.language_set = []
         self.labels = []
         self.images = []
+
+        self.language_set = []
+        if 'language_list' in conf.values() and len(conf.language_list) > 1:
+            self.language_set = conf.language_list
 
     def load_data(self):
         with open(self.label_filename) as label_file:
@@ -32,6 +35,7 @@ class TCData(object):
                 label_index = self.language_set.index(label)
 
                 self.labels.append(label_index)
+        tf.logging.info("Language index: {}".format(self.language_set))
 
     def lang_index(self, lang):
         """Return the index of the given language."""

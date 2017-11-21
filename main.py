@@ -108,6 +108,7 @@ def get_params():
         eval_epochs=1,
         train_epochs=40,
         shuffle_buffer_size=500,
+        language_list=[""]
     )
 
     # Default parameters for the CNN + RNN model
