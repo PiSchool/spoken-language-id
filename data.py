@@ -26,7 +26,8 @@ class TCData(object):
             next(csv_reader)
 
             for audio, label in csv_reader:
-                image_path = os.path.join(self.image_dir, '{}.png'.format(audio.split('.')[0]))
+                audio_filename = os.path.splitext(audio)[0]
+                image_path = os.path.join(self.image_dir, '{}.png'.format(audio_filename))
                 self.images.append(image_path)
 
                 # Store labels in a global
