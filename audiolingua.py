@@ -80,6 +80,7 @@ if __name__ == '__main__':
                         # Make the slice of filename.mp3 look like filename_1.mp3
                         slice_name = '{0}_{2}.mp3'.format(*os.path.splitext(recording_name), slice_num + 1)
                         slice_path = os.path.join(args.output_dir, slice_name)
+                        print(slice_path)
 
                         if len(rec_slice) > 3000:
                             # Only save slices longer than 3 seconds
