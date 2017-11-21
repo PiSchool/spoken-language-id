@@ -45,7 +45,7 @@ if __name__ == '__main__':
         page_start = 0
         page_found = True
 
-        user_archives = Counter()
+        user_recordings = Counter()
 
         # Pagination
         while page_found:
@@ -62,11 +62,9 @@ if __name__ == '__main__':
 
             recordings = re.findall(r'\<article.+?(auteur\d+).+?href="([\w\/\-\._]+\.mp3)".+?\</article\>', resp.text, flags=re.DOTALL)
             for user, recording_url in recordings:
-                if user_archives[user] >= args.per_user:
+                if user_recordings[user] >= args.per_user:
                     # We have enough archives of this user
                     continue
-
-                user_archives[user] += 1
 
                 # Download the archive
                 recording_name = re.match(r'.+\/([^\/]+)', recording_url).group(1)
@@ -85,11 +83,13 @@ if __name__ == '__main__':
 
                         if len(rec_slice) > 3000:
                             # Only save slices longer than 3 seconds
+                            user_recordings[user] += 1
                             rec_slice.export(slice_path, format='mp3')
-                            log_csv.writerow([slice_name, lang_name, user, user_archives[user]])
+                            log_csv.writerow([slice_name, lang_name, user, user_recordings[user]])
                     os.remove(recording_filename)
                 else:
-                    log_csv.writerow([recording_name, lang_name, user, user_archives[user]])
+                    user_recordings[user] += 1
+                    log_csv.writerow([recording_name, lang_name, user, user_recordings[user]])
                 log_file.flush()
-        print("Recordings by {} users.".format(len(user_archives)))
+        print("Recordings by {} users.".format(len(user_recordings)))
     log_file.close()
