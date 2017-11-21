@@ -7,6 +7,7 @@ from collections import OrderedDict
 
 import wget
 import requests
+from pydub import AudioSegment
 
 
 def make_args():
@@ -14,6 +15,7 @@ def make_args():
     parser.add_argument('--per-user', default=15, type=int, help="Limit the number of recordings per user")
     parser.add_argument('-d', '--output-dir', default='audiolingua_samples', help="Directory to output wave files to")
     parser.add_argument('-l', '--output-log', default='audiolingua_samples.csv', help="Metadata about downloaded files")
+    parser.add_argument('-s', '--split', default=20, type=int, help="Split each file into tracks of the given length (in seconds)")
     return parser.parse_args()
 
 
@@ -73,7 +75,21 @@ if __name__ == '__main__':
                 wget.download(download_url, out=recording_filename)
                 print()
 
-                log_csv.writerow([recording_name, lang_name, user, user_archives[user]])
+                if args.split > 0:
+                    recording = AudioSegment.from_mp3(recording_filename)
+                    recording_slices = recording[::args.split * 1000]
+                    for slice_num, rec_slice in enumerate(recording_slices):
+                        # Make the slice of filename.mp3 look like filename_1.mp3
+                        slice_name = '{0}_{2}.mp3'.format(*os.path.splitext(recording_name), slice_num + 1)
+                        slice_path = os.path.join(args.output_dir, slice_name)
+
+                        if len(rec_slice) > 3000:
+                            # Only save slices longer than 3 seconds
+                            rec_slice.export(slice_path, format='mp3')
+                            log_csv.writerow([slice_name, lang_name, user, user_archives[user]])
+                    os.remove(recording_filename)
+                else:
+                    log_csv.writerow([recording_name, lang_name, user, user_archives[user]])
                 log_file.flush()
         print("Recordings by {} users.".format(len(user_archives)))
     log_file.close()
