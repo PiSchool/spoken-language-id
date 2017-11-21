@@ -8,6 +8,7 @@ from collections import OrderedDict
 import wget
 import requests
 from pydub import AudioSegment
+from pydub.exceptions import CouldntDecodeError
 
 
 def make_args():
@@ -74,7 +75,12 @@ if __name__ == '__main__':
                 print()
 
                 if args.split > 0:
-                    recording = AudioSegment.from_mp3(recording_filename)
+                    try:
+                        recording = AudioSegment.from_mp3(recording_filename)
+                    except CouldntDecodeError:
+                        print("Error decoding {}".format(recording_filename))
+                        continue
+
                     recording_slices = recording[::args.split * 1000]
                     for slice_num, rec_slice in enumerate(recording_slices):
                         # Make the slice of filename.mp3 look like filename_1.mp3
