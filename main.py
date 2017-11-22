@@ -107,7 +107,7 @@ def get_params():
         eval_steps=None,
         eval_epochs=1,
         train_epochs=40,
-        shuffle_buffer_size=500,
+        shuffle_buffer_size=10000,
         language_list=[""]
     )
 
