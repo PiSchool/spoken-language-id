@@ -23,9 +23,14 @@ tf.app.flags.DEFINE_string(
     docstring='Directory with the spectrogram data.'
 )
 tf.app.flags.DEFINE_string(
-    flag_name='label-file',
+    flag_name='train-set',
     default_value=None,
-    docstring='A CSV file containing the labels for each spectrogram.'
+    docstring='A CSV file containing the training set: spectrogram and label pairs.'
+)
+tf.app.flags.DEFINE_string(
+    flag_name='eval-set',
+    default_value=None,
+    docstring='A CSV file containing the evaluation set: spectrogram and label pairs.'
 )
 tf.app.flags.DEFINE_string(
     flag_name='params',
@@ -52,51 +57,6 @@ tf.app.flags.DEFINE_string(
     default_value=None,
     docstring='Predict language for all png spectrograms in the specified directory.'
 )
-
-
-def get_inputs(image_dir, label_file, params, validation=False):
-    """Return input function and initializer hook."""
-    class IteratorInitHook(tf.train.SessionRunHook):
-        def __init__(self):
-            super(IteratorInitHook, self).__init__()
-            self.iterator_init = None
-
-        def after_create_session(self, session, coord):
-            session.run(self.iterator_init)
-
-    # Load data
-    data = TCData(image_dir, label_file, params)
-    data.load_data()
-
-    init_hook = IteratorInitHook()
-
-    def input_fn():
-        # Leave some data for the validation set
-        tail = False
-        use_percent = 100 - params.eval_percent
-        epochs = params.train_epochs
-        if validation:
-            # Use part of the training set for validation (take samples from the end)
-            tail = True
-            use_percent = params.eval_percent
-            epochs = params.eval_epochs
-
-        usable_data = data.get_data(use_percent=use_percent, tail=tail)
-        dataset = tf.data.Dataset.from_tensor_slices(usable_data)
-        dataset = dataset.shuffle(params.shuffle_buffer_size)
-        dataset = dataset.map(data.instance_as_tensor)
-        dataset = dataset.repeat(epochs)
-        dataset = dataset.padded_batch(
-            params.batch_size,
-            padded_shapes=([None, None, None], [])
-        )
-
-        iterator = dataset.make_initializable_iterator()
-        init_hook.iterator_init = iterator.initializer
-        next_example, next_label = iterator.get_next()
-        return next_example, next_label
-
-    return input_fn, init_hook
 
 
 def get_params():
@@ -163,11 +123,70 @@ def get_params():
     return model_fn, run_config, params
 
 
+def get_inputs(params, validation=False):
+    """Return input function and initializer hook."""
+    class IteratorInitHook(tf.train.SessionRunHook):
+        def __init__(self):
+            super(IteratorInitHook, self).__init__()
+            self.iterator_init = None
+
+        def after_create_session(self, session, coord):
+            session.run(self.iterator_init)
+
+    image_dir = FLAGS.image_dir
+    if validation:
+        epochs = params.eval_epochs
+        if FLAGS.eval_set is not None:
+            # Validation data is in a separate file
+            tail = False
+            data_file = FLAGS.eval_set
+            use_percent = 100
+        else:
+            # Validation data is a hold-out from the test set
+            tail = True
+            data_file = FLAGS.train_set
+            use_percent = params.eval_percent
+    else:
+        # Training data
+        tail = False
+        epochs = params.train_epochs
+        data_file = FLAGS.train_set
+        if FLAGS.eval_set is not None:
+            # Use all data for training, validation set is in a separate file
+            use_percent = 100
+        else:
+            # Leave some data for the validation set
+            use_percent = 100 - params.eval_percent
+
+    data = TCData(image_dir, data_file, params)
+    data.load_data()
+    usable_data = data.get_data(use_percent=use_percent, tail=tail)
+
+    init_hook = IteratorInitHook()
+
+    def input_fn():
+        dataset = tf.data.Dataset.from_tensor_slices(usable_data)
+        dataset = dataset.shuffle(params.shuffle_buffer_size)
+        dataset = dataset.map(data.instance_as_tensor)
+        dataset = dataset.repeat(epochs)
+        dataset = dataset.padded_batch(
+            params.batch_size,
+            padded_shapes=([None, None, None], [])
+        )
+
+        iterator = dataset.make_initializable_iterator()
+        init_hook.iterator_init = iterator.initializer
+        next_example, next_label = iterator.get_next()
+        return next_example, next_label
+
+    return input_fn, init_hook
+
+
 def experiment_fn(model_fn, run_config, params):
     model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
 
-    train_input_fn, train_input_hook = get_inputs(FLAGS.image_dir, FLAGS.label_file, params)
-    eval_input_fn, eval_input_hook = get_inputs(FLAGS.image_dir, FLAGS.label_file, params, validation=True)
+    train_input_fn, train_input_hook = get_inputs(params)
+    eval_input_fn, eval_input_hook = get_inputs(params, validation=True)
 
     experiment = tf.contrib.learn.Experiment(
         estimator=model,
@@ -184,7 +203,7 @@ def experiment_fn(model_fn, run_config, params):
 def predict_single(model_fn, run_config, params, png_path):
     """Predict the language given the path to a single spectrogram in png format."""
     model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
-    predict_input_fn, predict_input_hook = get_inputs(FLAGS.image_dir, FLAGS.label_file, params)
+    predict_input_fn, predict_input_hook = get_inputs(params)
 
     # Load data
     data = TCData(FLAGS.image_dir, FLAGS.label_file, params)
@@ -215,7 +234,7 @@ def evaluate(model_fn, run_config, params):
         'batch_size': 10
     })
     model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
-    input_fn, input_hook = get_inputs(FLAGS.image_dir, FLAGS.label_file, params, validation=True)
+    input_fn, input_hook = get_inputs(params, validation=True)
     metrics = model.evaluate(input_fn=input_fn, hooks=[input_hook])
     tf.logging.info(metrics)
 
