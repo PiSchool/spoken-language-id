@@ -37,6 +37,11 @@ tf.app.flags.DEFINE_string(
     default_value='combo',
     docstring='Which model to use (rnn, combo).'
 )
+tf.app.flags.DEFINE_boolean(
+    flag_name='evaluate',
+    default_value=None,
+    docstring='Run evaluation instead of training (and evaluation).'
+)
 tf.app.flags.DEFINE_string(
     flag_name='predict',
     default_value=None,
@@ -201,10 +206,25 @@ def predict_single(model_fn, run_config, params, png_path):
     tf.logging.info("\n".join(pred_probs))
 
 
+def evaluate(model_fn, run_config, params):
+    # Set necessary parameters
+    params.set_from_map({
+        'eval_epochs': 1,
+        'eval_percent': 100,
+        'batch_size': 10
+    })
+    model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
+    input_fn, input_hook = get_inputs(FLAGS.image_dir, FLAGS.label_file, params, validation=True)
+    metrics = model.evaluate(input_fn=input_fn, hooks=[input_hook])
+    tf.logging.info(metrics)
+
+
 def train_or_predict(argv=None):
     model_fn, run_config, params = get_params()
 
-    if FLAGS.predict_dir:
+    if FLAGS.evaluate:
+        evaluate(model_fn, run_config, params)
+    elif FLAGS.predict_dir:
         filenames = os.listdir(FLAGS.predict_dir)
         for filename in sorted(filenames):
             if filename.endswith(".png"):
