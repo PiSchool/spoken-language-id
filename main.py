@@ -105,6 +105,7 @@ def get_params():
         spectrogram_bins=128,
         language_count=176,
         batch_size=16,
+        optimizer='momentum',
         learning_rate=0.003,
         momentum=0.9,
         eval_percent=5,

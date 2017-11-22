@@ -25,10 +25,17 @@ def base_model_fn(model, features, labels, mode, params):
             l2_regularizer, tf.trainable_variables()
         )
 
-    optimizer = tf.train.MomentumOptimizer(
-        learning_rate=params.learning_rate,
-        momentum=params.momentum
-    ).minimize(loss, global_step=tf.train.get_global_step())
+    if params.optimizer == 'adam':
+        optimizer = tf.train.AdamOptimizer(
+            learning_rate=params.learning_rate,
+        )
+    else:
+        optimizer = tf.train.MomentumOptimizer(
+            learning_rate=params.learning_rate,
+            momentum=params.momentum
+        )
+
+    train_op = optimizer.minimize(loss, global_step=tf.train.get_global_step())
 
     # Evaluate the accuracy of the model
     accuracy, accuracy_op = tf.metrics.accuracy(labels=labels, predictions=pred_classes)
@@ -41,6 +48,6 @@ def base_model_fn(model, features, labels, mode, params):
         mode=mode,
         predictions=predictions,
         loss=loss,
-        train_op=optimizer,
+        train_op=train_op,
         eval_metric_ops={'accuracy': (accuracy, accuracy_op)}
     )
