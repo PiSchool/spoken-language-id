@@ -82,6 +82,7 @@ def get_params():
         **common_params,
         gru_num_units=128,
         dropout=0,
+        pool_dropout=0,
         regularize=0,
         normalize=True,
     )
