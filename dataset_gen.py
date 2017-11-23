@@ -116,9 +116,11 @@ def write_output(args, train_set, eval_set):
     eval_set = (e[:2] for e in eval_set)
 
     # Write the training set
+    train_set = list(train_set)
     print("Writing training set to {}".format(args.train_file))
     with open(args.train_file, 'w') as train_file:
         train_csv = csv.writer(train_file)
+        random.shuffle(train_set)
         train_csv.writerows(train_set)
 
     # Write the full evalutaion set
