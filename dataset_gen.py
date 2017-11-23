@@ -15,6 +15,7 @@ def make_args():
     parser = argparse.ArgumentParser(description="Generate test and evaluation sets from multiple sources.")
     parser.add_argument('--per-speaker', default=20, type=int, help="Limit the number of recordings per speaker")
     parser.add_argument('-a', '--audio-dir', help="Directory containing audio files (to check if entries exist)")
+    parser.add_argument('--eval-samples-dir', default="eval_samples", help="Directory where the generated evaluation samples will be stored")
     parser.add_argument('--voxforge-file', help="VoxForge data CSV file")
     parser.add_argument('--voxforge-per-lang', default=1250, type=int, help="Limit the number of recordings per language for VoxForge")
     parser.add_argument('--audiolingua-file', help="Audio Lingua data CSV file")
@@ -101,7 +102,7 @@ def generate_short_samples(args, entries, duration=5):
             name_base, name_ext = os.path.splitext(audio_filename)
             file_format = name_ext.strip('.')
             slice_name = '{0}_{3}s_{2}{1}'.format(name_base, name_ext, slice_num + 1, duration)
-            slice_path = os.path.join(args.audio_dir, slice_name)
+            slice_path = os.path.join(args.eval_samples_dir, slice_name)
 
             if len(rec_slice) == duration * 1000:
                 # Only save slices of the desired duration
