@@ -7,6 +7,7 @@ from collections import OrderedDict
 
 import wget
 import requests
+from bs4 import BeautifulSoup
 from pydub import AudioSegment
 from pydub.exceptions import CouldntDecodeError
 
@@ -61,8 +62,26 @@ if __name__ == '__main__':
             # Extract item count
             max_per_lang = int(re.search(r'(\d+) ressources', resp.text).group(1))
 
-            recordings = re.findall(r'\<article.+?(auteur\d+).+?href="([\w\/\-\._]+\.mp3)".+?\</article\>', resp.text, flags=re.DOTALL)
-            for user, recording_url in recordings:
+            recording_tags = BeautifulSoup(resp.text, 'html5lib').find(id='content').find_all('article')
+            for recording_tag in recording_tags:
+                source_tag = recording_tag.find('source')
+                if not source_tag:
+                    print("Ignoring an entry because it has no audio")
+                    continue
+                recording_url = source_tag.attrs['src']
+
+                author_tag = recording_tag.find(class_='author')
+                if not author_tag:
+                    print("Ignoring {} because its author is unknown".format(recording_url))
+                    continue
+                user = author_tag.a.attrs['href'].split('?')[1]
+
+                musical = bool(recording_tag.find_all(string=re.compile('musique')))
+                if musical:
+                    # We don't want musical tracks
+                    print("Ignore {} because it's musical".format(recording_url))
+                    continue
+
                 if user_recordings[user] >= args.per_user:
                     # We have enough archives of this user
                     continue
@@ -83,16 +102,22 @@ if __name__ == '__main__':
 
                     recording_slices = recording[::args.split * 1000]
                     for slice_num, rec_slice in enumerate(recording_slices):
-                        # Make the slice of filename.mp3 look like filename_1.mp3
-                        slice_name = '{0}_{2}.mp3'.format(*os.path.splitext(recording_name), slice_num + 1)
-                        slice_path = os.path.join(args.output_dir, slice_name)
-                        print(slice_path)
-
-                        if len(rec_slice) > 3000:
-                            # Only save slices longer than 3 seconds
+                        slice_duration = len(rec_slice)
+                        if slice_duration > 5000:
+                            # Only save slices longer than 5 seconds
                             user_recordings[user] += 1
+
+                            # Format the slice's filename to contain duration and index
+                            slice_name = '{0}_{2}s_{3}.mp3'.format(
+                                *os.path.splitext(recording_name),
+                                slice_duration // 1000,
+                                slice_num + 1,
+                            )
+                            slice_path = os.path.join(args.output_dir, slice_name)
+
                             rec_slice.export(slice_path, format='mp3')
                             log_csv.writerow([slice_name, lang_name, user, user_recordings[user]])
+                            print(slice_path)
                     os.remove(recording_filename)
                 else:
                     user_recordings[user] += 1
