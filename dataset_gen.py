@@ -58,7 +58,7 @@ def process_input(args, input_filename, per_lang):
 
 def shuffle(entries):
     """Shuffle so that all entries with the same speaker stay together."""
-    salt = ''.join(random.choices(string.ascii_lowercase, k=5))
+    salt = ''.join(random.choice(string.ascii_lowercase) for _ in range(6))
     # The key is a salted hash of the speaker
     salted_hash = lambda e: hashlib.md5((salt + e[2]).encode('utf-8')).hexdigest()
     entries.sort(key=salted_hash)
