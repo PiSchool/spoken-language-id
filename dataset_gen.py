@@ -4,7 +4,11 @@ import string
 import random
 import hashlib
 import argparse
+import itertools
 from collections import Counter
+
+from pydub import AudioSegment
+from pydub.exceptions import CouldntDecodeError
 
 
 def make_args():
@@ -81,18 +85,58 @@ def split(entries, at=10):
     return eval_set, entries[position:]
 
 
+def generate_short_samples(args, entries, duration=5):
+    """For each given filename, split it into chunks of given duration."""
+    slice_list = []
+    print("Generating {} second evaluation samples".format(duration))
+    for audio_filename, lang in entries:
+        try:
+            recording = AudioSegment.from_mp3(os.path.join(args.audio_dir, audio_filename))
+        except CouldntDecodeError:
+            print("Error decoding {}".format(audio_filename))
+            continue
+
+        recording_slices = recording[::duration * 1000]
+        for slice_num, rec_slice in enumerate(recording_slices):
+            name_base, name_ext = os.path.splitext(audio_filename)
+            file_format = name_ext.strip('.')
+            slice_name = '{0}_{3}s_{2}{1}'.format(name_base, name_ext, slice_num + 1, duration)
+            slice_path = os.path.join(args.audio_dir, slice_name)
+
+            if len(rec_slice) == duration * 1000:
+                # Only save slices of the desired duration
+                rec_slice.export(slice_path, format=file_format)
+                slice_list.append([slice_name, lang])
+    return slice_list
+
+
 def write_output(args, train_set, eval_set):
     # Only leave the first two columns
     train_set = (e[:2] for e in train_set)
     eval_set = (e[:2] for e in eval_set)
 
+    # Write the training set
+    print("Writing training set to {}".format(args.train_file))
     with open(args.train_file, 'w') as train_file:
         train_csv = csv.writer(train_file)
         train_csv.writerows(train_set)
 
+    # Write the full evalutaion set
+    eval_set = list(eval_set)
+    print("Writing full evaluation set to {}".format(args.eval_file))
     with open(args.eval_file, 'w') as eval_file:
         eval_csv = csv.writer(eval_file)
         eval_csv.writerows(eval_set)
+
+    # Write the evaluation sets of exact sample length
+    for duration in (3, 5, 10):
+        eval_duration_set = generate_short_samples(args, eval_set, duration=duration)
+        eval_basename, eval_ext = os.path.splitext(args.eval_file)
+        eval_duration_filename = '{}_{}s{}'.format(eval_basename, duration, eval_ext)
+        print("Writing {} second evaluation samples to {}".format(duration, eval_duration_filename))
+        with open(eval_duration_filename, 'w') as eval_file:
+            eval_csv = csv.writer(eval_file)
+            eval_csv.writerows(eval_duration_set)
 
 
 if __name__ == '__main__':
@@ -114,8 +158,6 @@ if __name__ == '__main__':
     shuffle(entries)
     eval_set, train_set = split(entries, args.eval_split)
     write_output(args, train_set, eval_set)
-
-    # TODO use pydub on eval_set to generate fixed-length evaluation sets
 
     print("==== Summary ====")
     for input_summary in file_data:
