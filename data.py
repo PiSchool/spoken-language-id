@@ -21,10 +21,6 @@ class TCData(object):
     def load_data(self):
         with open(self.label_filename) as label_file:
             csv_reader = csv.reader(label_file, delimiter=',')
-
-            # Skip the header
-            next(csv_reader)
-
             for audio, label in csv_reader:
                 audio_filename = os.path.splitext(audio)[0]
                 image_path = os.path.join(self.image_dir, '{}.png'.format(audio_filename))
