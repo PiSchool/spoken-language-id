@@ -42,12 +42,12 @@ def languid_combo(features, training, params):
     with tf.variable_scope("GRU"):
         gru_cell = tf.contrib.rnn.GRUCell(num_units=params.gru_num_units)
         output_gru, final_state = tf.nn.dynamic_rnn(gru_cell, input_gru, dtype=tf.float32)
-        norm_output_gru = tf.layers.batch_normalization(final_state, training=training)
-
+        if params.normalize:
+            final_state = tf.contrib.layers.layer_norm(final_state)
         if params.dropout:
-            norm_output_gru = tf.layers.dropout(final_state, rate=params.dropout, training=training)
+            final_state = tf.layers.dropout(final_state, rate=params.dropout, training=training)
 
     # The prediction layer
-    dense = tf.layers.dense(inputs=norm_output_gru, units=params.language_count)
+    dense = tf.layers.dense(inputs=final_state, units=params.language_count)
 
     return dense
