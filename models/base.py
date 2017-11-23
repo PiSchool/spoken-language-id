@@ -19,10 +19,11 @@ def base_model_fn(model, features, labels, mode, params):
     onehot_labels = tf.one_hot(labels, depth=params.language_count)
     loss = tf.losses.softmax_cross_entropy(onehot_labels, logits)
     if params.regularize:
-        # Add L2 regularization if configured
+        # Add L2 regularization to non-bias variables if configured
+        non_bias_vars = [v for v in tf.trainable_variables() if not 'bias' in v.name]
         l2_regularizer = tf.contrib.layers.l2_regularizer(params.regularize)
         loss += tf.contrib.layers.apply_regularization(
-            l2_regularizer, tf.trainable_variables()
+            l2_regularizer, non_bias_vars
         )
 
     if params.optimizer == 'adam':
