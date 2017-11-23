@@ -90,6 +90,10 @@ def generate_short_samples(args, entries, duration=5):
     """For each given filename, split it into chunks of given duration."""
     slice_list = []
     print("Generating {} second evaluation samples".format(duration))
+
+    # Create the output directory if it does not exist
+    os.makedirs(args.eval_samples_dir, exist_ok=True)
+
     for audio_filename, lang in entries:
         try:
             recording = AudioSegment.from_mp3(os.path.join(args.audio_dir, audio_filename))
