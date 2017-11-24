@@ -1,14 +1,6 @@
 import tensorflow as tf
 
-
-def convpool_layers(inputs, training, filters, kernel_size, pool_size, strides, normalize, pool_dropout):
-    conv = tf.layers.conv2d(inputs, filters=filters, kernel_size=kernel_size, activation=tf.nn.relu)
-    if pool_dropout:
-        conv = tf.layers.dropout(conv, rate=pool_dropout, training=training)
-    pool = tf.layers.max_pooling2d(conv, pool_size=pool_size, strides=strides, padding='same')
-    if normalize:
-        pool = tf.contrib.layers.layer_norm(pool)
-    return pool
+from .base import convpool_layers
 
 
 def languid_combo(features, training, params):
@@ -23,19 +15,19 @@ def languid_combo(features, training, params):
 
     with tf.variable_scope("CNN"):
         convpool = convpool_layers(
-            input_reshaped, training, filters=16, kernel_size=7, pool_size=3, strides=(2, 1),
+            input_reshaped, training, filters=16, kernel_size=7, pool_size=3, pool_strides=(2, 1),
             normalize=params.normalize, pool_dropout=params.pool_dropout,
         )
         convpool = convpool_layers(
-            convpool, training, filters=32, kernel_size=5, pool_size=3, strides=(2, 1),
+            convpool, training, filters=32, kernel_size=5, pool_size=3, pool_strides=(2, 1),
             normalize=params.normalize, pool_dropout=params.pool_dropout,
         )
         convpool = convpool_layers(
-            convpool, training, filters=32, kernel_size=3, pool_size=3, strides=(2, 1),
+            convpool, training, filters=32, kernel_size=3, pool_size=3, pool_strides=(2, 1),
             normalize=params.normalize, pool_dropout=params.pool_dropout,
         )
         convpool = convpool_layers(
-            convpool, training, filters=32, kernel_size=3, pool_size=3, strides=(2, 1),
+            convpool, training, filters=32, kernel_size=3, pool_size=3, pool_strides=(2, 1),
             normalize=params.normalize, pool_dropout=params.pool_dropout,
         )
 

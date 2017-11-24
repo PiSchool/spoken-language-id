@@ -7,6 +7,8 @@ import tensorflow as tf
 from models.base import base_model_fn
 from models.combo import languid_combo as languid_combo_model
 from models.rnn import languid_rnn as languid_rnn_model
+from models.cnn import languid_cnn as languid_cnn_model
+from models.montavon import languid_montavon as languid_montavon_model
 from data import TCData
 
 
@@ -87,6 +89,16 @@ def get_params():
         normalize=True,
     )
 
+    # Default parameters for the CNN model
+    cnn_params = tf.contrib.training.HParams(
+        **common_params,
+        spectrogram_width=858,
+        dropout=0,
+        pool_dropout=0,
+        regularize=0,
+        normalize=True,
+    )
+
     # Default parameters for the RNN model
     rnn_params = tf.contrib.training.HParams(
         **common_params,
@@ -96,14 +108,32 @@ def get_params():
         normalize=True,
     )
 
+    # Default parameters for the CNN model
+    montavon_params = tf.contrib.training.HParams(
+        **common_params,
+        spectrogram_width=858,
+        dropout=0,
+        pool_dropout=0,
+        regularize=0,
+        normalize=True,
+    )
+
     if FLAGS.model == 'combo':
         params = combo_params
         model_fn = partial(base_model_fn, languid_combo_model)
         tf.logging.info("Running the COMBO model")
-    else:
+    elif FLAGS.model == 'cnn':
+        params = cnn_params
+        model_fn = partial(base_model_fn, languid_cnn_model)
+        tf.logging.info("Running the CNN model")
+    elif FLAGS.model == 'rnn':
         params = rnn_params
         model_fn = partial(base_model_fn, languid_rnn_model)
         tf.logging.info("Running the RNN model")
+    elif FLAGS.model == 'montavon':
+        params = montavon_params
+        model_fn = partial(base_model_fn, languid_montavon_model)
+        tf.logging.info("Running the Montavon model")
 
     # Parameters can be overridden from a JSON file
     if FLAGS.params:
