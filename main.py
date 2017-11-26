@@ -246,7 +246,7 @@ def experiment_fn(model_fn, run_config, params):
             for l in self._listeners:
                 l.end(session, last_step)
 
-    hook_best = BestCheckpointHook(run_config.model_dir)
+    best_hook = BestCheckpointHook(run_config.model_dir)
 
     experiment = tf.contrib.learn.Experiment(
         estimator=model,
