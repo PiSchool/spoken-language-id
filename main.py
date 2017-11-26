@@ -263,17 +263,21 @@ def experiment_fn(model_fn, run_config, params):
 def predict_single(model_fn, run_config, params, png_path):
     """Predict the language given the path to a single spectrogram in png format."""
     model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
-    predict_input_fn, predict_input_hook = get_inputs(params)
 
     # Load data
-    data = TCData(FLAGS.image_dir, FLAGS.label_file, params)
-    data.load_data()
+    if not params.language_list:
+        # Language order can be loaded from the training set
+        data = TCData(FLAGS.image_dir, FLAGS.train_set, params)
+        data.load_data()
+        language_list = data.language_set
+    else:
+        language_list = params.language_list
 
-    iterator = model.predict(input_fn=lambda: data.instance_as_tensor(png_path))
+    iterator = model.predict(input_fn=lambda: TCData.instance_as_tensor(png_path))
     prediction = next(iterator)
 
     # Generate a list of (lang_id, probability) pairs
-    pred_probs = [(data.language_set[l], p * 100) for l, p in enumerate(prediction['probs'])]
+    pred_probs = [(language_list[l], p * 100) for l, p in enumerate(prediction['probs'])]
 
     # Sort them by probability, take 10 most likely
     pred_probs = sorted(pred_probs, key=lambda x: x[1], reverse=True)[:10]
@@ -282,7 +286,7 @@ def predict_single(model_fn, run_config, params, png_path):
     pred_probs = ["{}: {:.2f}%".format(l, p) for l, p in pred_probs]
 
     tf.logging.info("Predicting language for {}".format(png_path))
-    tf.logging.info("Predicted language: {}".format(data.language_set[prediction['class']]))
+    tf.logging.info("Predicted language: {}".format(language_list[prediction['class']]))
     tf.logging.info("\n".join(pred_probs))
 
 
@@ -300,12 +304,13 @@ def find_best_checkpoint(run_config):
 
     return None
 
+
 def evaluate(model_fn, run_config, params):
     # Set necessary parameters
     params.set_from_map({
         'eval_epochs': 1,
         'eval_percent': 100,
-        'batch_size': 10
+        'batch_size': 5
     })
     model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
     input_fn, input_hook = get_inputs(params, validation=True)
