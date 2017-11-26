@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 from functools import partial
 
 import tensorflow as tf
@@ -297,5 +298,6 @@ def train_or_predict(argv=None):
 if __name__ == '__main__':
     # Logging and warning
     tf.logging.set_verbosity(tf.logging.INFO)
+    tf.logging._handler.setFormatter(logging.Formatter("%(message)s", None))
 
     tf.app.run(main=train_or_predict)
