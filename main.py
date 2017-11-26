@@ -220,13 +220,41 @@ def experiment_fn(model_fn, run_config, params):
     train_input_fn, train_input_hook = get_inputs(params)
     eval_input_fn, eval_input_hook = get_inputs(params, validation=True)
 
+    class BestCheckpointHook(tf.train.CheckpointSaverHook):
+        """Session hook that keeps saving the models with best accuracy so far."""
+        def __init__(self, checkpoint_dir, save_secs=1, *args, **kwargs):
+            super().__init__(checkpoint_dir, save_secs, checkpoint_basename='best.ckpt', *args, **kwargs)
+            self.current_best = 0
+            self.last_accuracy = 0
+            self.last_step = 0
+
+        def before_run(self, run_context):
+            g = tf.get_default_graph()
+            accuracy = g.get_tensor_by_name('accuracy/value:0')
+            return tf.train.SessionRunArgs({'accuracy': accuracy})
+
+        def after_run(self, run_context, run_values):
+            self.last_accuracy = run_values.results['accuracy']
+
+        def end(self, session):
+            if self.last_accuracy > self.current_best:
+                # We've finished the evaluation run and have a new best
+                self.current_best = self.last_accuracy
+                self._save(session, session.run(self._global_step_tensor))
+                tf.logging.info("New best accuracy {:.7f}, saved to {}.".format(self.current_best, self._save_path))
+
+            for l in self._listeners:
+                l.end(session, last_step)
+
+    hook_best = BestCheckpointHook(run_config.model_dir)
+
     experiment = tf.contrib.learn.Experiment(
         estimator=model,
         train_input_fn=train_input_fn,
         eval_input_fn=eval_input_fn,
         min_eval_frequency=params.eval_frequency,
         train_monitors=[train_input_hook],
-        eval_hooks=[eval_input_hook],
+        eval_hooks=[eval_input_hook, best_hook],
         eval_steps=params.eval_steps
     )
     return experiment
@@ -258,6 +286,20 @@ def predict_single(model_fn, run_config, params, png_path):
     tf.logging.info("\n".join(pred_probs))
 
 
+def find_best_checkpoint(run_config):
+    # Check if there is a special checkpoint with the best accuracy
+    model_files = os.listdir(run_config.model_dir)
+    best_checkpoint = sorted(
+        [f for f in model_files if 'best.ckpt' in f and 'index' in f],
+        key=lambda fname: int(''.join(filter(str.isdigit, fname)))
+    )[-1]
+
+    if best_checkpoint:
+        best_checkpoint_name = os.path.splitext(best_checkpoint)[0]
+        return os.path.join(run_config.model_dir, best_checkpoint_name)
+
+    return None
+
 def evaluate(model_fn, run_config, params):
     # Set necessary parameters
     params.set_from_map({
@@ -267,7 +309,9 @@ def evaluate(model_fn, run_config, params):
     })
     model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
     input_fn, input_hook = get_inputs(params, validation=True)
-    metrics = model.evaluate(input_fn=input_fn, hooks=[input_hook])
+
+    checkpoint_path = find_best_checkpoint(run_config)
+    metrics = model.evaluate(input_fn=input_fn, hooks=[input_hook], checkpoint_path=checkpoint_path)
     tf.logging.info(metrics)
 
 
