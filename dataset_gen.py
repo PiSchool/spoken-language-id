@@ -24,10 +24,11 @@ def make_args():
     parser.add_argument('-t', '--train-file', required=True, help="Output file for training set")
     parser.add_argument('-e', '--eval-file', required=True, help="Output file for evaluation set")
     parser.add_argument('-s', '--eval-split', default=10, type=int, help="At least what percent of data should go to the evaluation set.")
+    parser.add_argument('-l', '--langs', help="Comma-separated list of language codes to include.")
     return parser.parse_args()
 
 
-def process_input(args, input_filename, per_lang):
+def process_input(args, input_filename, per_lang, languages):
     skipped = 0
     original_count = 0
     output_list = []
@@ -37,6 +38,10 @@ def process_input(args, input_filename, per_lang):
         reader = csv.reader(input_file)
         for audio_filename, lang, speaker, count in reader:
             original_count += 1
+
+            if not lang in languages:
+                # We are not interested in this language
+                continue
 
             if not args.no_missing_check and not os.path.isfile(os.path.join(args.audio_dir, audio_filename)):
                 # Check if sample files actually exist, if necessary
@@ -148,26 +153,40 @@ def write_output(args, train_set, eval_set):
 
 if __name__ == '__main__':
     args = make_args()
-    languages = ["English", "French", "German", "Italian", "Portuguese", "Spanish"]
+    code_to_lang = {
+        'en': 'English',
+        'fr': 'French',
+        'de': 'German',
+        'es': 'Spanish',
+        'it': 'Italian',
+        'pt': 'Portuguese',
+    }
+
+    if args.langs:
+        codes = args.langs.split(',')
+        languages = [lang for code, lang in code_to_lang.items() if code in codes]
+    else:
+        languages = code_to_lang.values()
+    print("Creating a dataset for the following {} languages: {}.".format(len(languages), ', '.join(languages)))
 
     entries = []
-    file_data = []
+    input_summaries = []
     if args.voxforge_file:
-        add_entries, orig_count, skipped = process_input(args, args.voxforge_file, args.voxforge_per_lang)
+        add_entries, orig_count, skipped = process_input(args, args.voxforge_file, args.voxforge_per_lang, languages)
         entries += add_entries
-        file_data.append((args.voxforge_file, len(add_entries), orig_count, skipped))
+        input_summaries.append((args.voxforge_file, len(add_entries), orig_count, skipped))
 
     if args.audiolingua_file:
-        add_entries, orig_count, skipped = process_input(args, args.audiolingua_file, args.audiolingua_per_lang)
+        add_entries, orig_count, skipped = process_input(args, args.audiolingua_file, args.audiolingua_per_lang, languages)
         entries += add_entries
-        file_data.append((args.audiolingua_file, len(add_entries), orig_count, skipped))
+        input_summaries.append((args.audiolingua_file, len(add_entries), orig_count, skipped))
 
     shuffle(entries)
     eval_set, train_set = split(entries, args.eval_split)
     write_output(args, train_set, eval_set)
 
     print("==== Summary ====")
-    for input_summary in file_data:
+    for input_summary in input_summaries:
         print("Input counts ({0}): {2}, used: {1}, skipped: {3}".format(*input_summary))
     print("Training set count ({}): {}".format(args.train_file, len(train_set)))
     print("Evaluation set count ({}): {}".format(args.eval_file, len(eval_set)))
