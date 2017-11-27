@@ -14,12 +14,10 @@ from pydub.exceptions import CouldntDecodeError
 def make_args():
     parser = argparse.ArgumentParser(description="Generate test and evaluation sets from multiple sources.")
     parser.add_argument('--per-speaker', default=20, type=int, help="Limit the number of recordings per speaker")
-    parser.add_argument('-a', '--audio-dir', help="Directory containing audio files (to check if entries exist)")
-    parser.add_argument('--eval-samples-dir', default="eval_samples", help="Directory where the generated evaluation samples will be stored")
-    parser.add_argument('--voxforge-file', help="VoxForge data CSV file")
-    parser.add_argument('--voxforge-per-lang', default=1250, type=int, help="Limit the number of recordings per language for VoxForge")
-    parser.add_argument('--audiolingua-file', help="Audio Lingua data CSV file")
-    parser.add_argument('--audiolingua-per-lang', default=210, type=int, help="Limit the number of recordings per language for Audio Lingua")
+    parser.add_argument('-a', '--audio-dirs', nargs='+', required=True, help="Directory containing audio files (to check if entries exist, should be provided for each dataset)")
+    parser.add_argument('-i', '--input-lists',nargs='+', required=True, help="A CSV file containing the list of audio file, language pairs (can be provided multiple times)")
+    parser.add_argument('-c', '--input-limits', nargs='+', type=int, help="Limit the number of recordings per language in the respective dataset (can be provided multiple times)")
+    parser.add_argument('--eval-samples-dir', default='eval_samples', help="Directory where the generated evaluation samples will be stored")
     parser.add_argument('--no-missing-check', default=False, action='store_true', help="Do not check if data samples actually exist")
     parser.add_argument('-t', '--train-file', required=True, help="Output file for training set")
     parser.add_argument('-e', '--eval-file', required=True, help="Output file for evaluation set")
@@ -28,7 +26,7 @@ def make_args():
     return parser.parse_args()
 
 
-def process_input(args, input_filename, per_lang, languages):
+def process_input(args, audio_dir, input_filename, per_lang, languages):
     skipped = 0
     original_count = 0
     output_list = []
@@ -43,7 +41,7 @@ def process_input(args, input_filename, per_lang, languages):
                 # We are not interested in this language
                 continue
 
-            if not args.no_missing_check and not os.path.isfile(os.path.join(args.audio_dir, audio_filename)):
+            if not args.no_missing_check and not os.path.isfile(os.path.join(audio_dir, audio_filename)):
                 # Check if sample files actually exist, if necessary
                 skipped += 1
                 continue
@@ -57,7 +55,7 @@ def process_input(args, input_filename, per_lang, languages):
                 # We have enough samples of this language
                 continue
 
-            output_list.append([audio_filename, lang, speaker])
+            output_list.append([audio_filename, lang, speaker, audio_dir])
     return output_list, original_count, skipped
 
 
@@ -99,9 +97,9 @@ def generate_short_samples(args, entries, duration=5):
     # Create the output directory if it does not exist
     os.makedirs(args.eval_samples_dir, exist_ok=True)
 
-    for audio_filename, lang in entries:
+    for audio_filename, lang, _, audio_dir in entries:
         try:
-            recording = AudioSegment.from_mp3(os.path.join(args.audio_dir, audio_filename))
+            recording = AudioSegment.from_mp3(os.path.join(audio_dir, audio_filename))
         except CouldntDecodeError:
             print("Error decoding {}".format(audio_filename))
             continue
@@ -121,24 +119,22 @@ def generate_short_samples(args, entries, duration=5):
 
 
 def write_output(args, train_set, eval_set):
-    # Only leave the first two columns
-    train_set = (e[:2] for e in train_set)
-    eval_set = (e[:2] for e in eval_set)
+    train_set = list(train_set)
+    eval_set = list(eval_set)
 
     # Write the training set
-    train_set = list(train_set)
     print("Writing training set to {}".format(args.train_file))
     with open(args.train_file, 'w') as train_file:
         train_csv = csv.writer(train_file)
+        train_set = [e[:2] for e in train_set]
         random.shuffle(train_set)
         train_csv.writerows(train_set)
 
     # Write the full evalutaion set
-    eval_set = list(eval_set)
     print("Writing full evaluation set to {}".format(args.eval_file))
     with open(args.eval_file, 'w') as eval_file:
         eval_csv = csv.writer(eval_file)
-        eval_csv.writerows(eval_set)
+        eval_csv.writerows([e[:2] for e in eval_set])
 
     # Write the evaluation sets of exact sample length
     for duration in (3, 5, 10):
@@ -148,6 +144,7 @@ def write_output(args, train_set, eval_set):
         print("Writing {} second evaluation samples to {}".format(duration, eval_duration_filename))
         with open(eval_duration_filename, 'w') as eval_file:
             eval_csv = csv.writer(eval_file)
+            eval_duration_set = (e[:2] for e in eval_duration_set)
             eval_csv.writerows(eval_duration_set)
 
 
@@ -162,6 +159,16 @@ if __name__ == '__main__':
         'pt': 'Portuguese',
     }
 
+    if len(args.audio_dirs) != len(args.input_lists):
+        print("You should specifiy as many audio directories as input list files.")
+        exit(1)
+
+    if not args.input_limits:
+        args.input_limits = [1000000] * len(args.input_lists)
+    elif args.input_limits and len(args.input_limits) != len(args.input_lists):
+        print("You should specifiy as many recording limits as input list files.")
+        exit(1)
+
     if args.langs:
         codes = args.langs.split(',')
         languages = [lang for code, lang in code_to_lang.items() if code in codes]
@@ -171,15 +178,17 @@ if __name__ == '__main__':
 
     entries = []
     input_summaries = []
-    if args.voxforge_file:
-        add_entries, orig_count, skipped = process_input(args, args.voxforge_file, args.voxforge_per_lang, languages)
+    list_dir_limits = zip(args.input_lists, args.audio_dirs, args.input_limits)
+    for list_filename, audio_dir, per_lang in list_dir_limits:
+        # Process each source
+        print("Processing {} with audio files in {}, limiting to {} records per language".format(
+            list_filename,
+            audio_dir,
+            per_lang
+        ))
+        add_entries, orig_count, skipped = process_input(args, audio_dir, list_filename, per_lang, languages)
         entries += add_entries
-        input_summaries.append((args.voxforge_file, len(add_entries), orig_count, skipped))
-
-    if args.audiolingua_file:
-        add_entries, orig_count, skipped = process_input(args, args.audiolingua_file, args.audiolingua_per_lang, languages)
-        entries += add_entries
-        input_summaries.append((args.audiolingua_file, len(add_entries), orig_count, skipped))
+        input_summaries.append((list_filename, len(add_entries), orig_count, skipped))
 
     shuffle(entries)
     eval_set, train_set = split(entries, args.eval_split)
