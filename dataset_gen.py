@@ -124,8 +124,8 @@ def generate_short_samples(args, entries, duration=5):
     for audio_filename, lang, _, audio_dir in entries:
         try:
             recording, sampling_rate = librosa.load(os.path.join(audio_dir, audio_filename), sr=44100)
-        except:
-            print("Error decoding {}".format(audio_filename))
+        except (audioop.error, EOFError):
+            print("Error reading {}".format(audio_filename))
             continue
 
         n_full_chunks = math.floor(len(recording) / sampling_rate / duration)
@@ -162,7 +162,7 @@ def write_output(args, train_set, eval_set):
             spectrogram_path = os.path.join(args.output_dir, spectrogram_name)
             try:
                 time_series, _ = librosa.load(wave_path, sr=44100)
-            except audioop.error:
+            except (audioop.error, EOFError):
                 print("Error reading {}".format(wave_path))
                 continue
             save_spectrogram(time_series, spectrogram_path, args.mfcc)
@@ -180,7 +180,7 @@ def write_output(args, train_set, eval_set):
             spectrogram_path = os.path.join(args.output_dir, spectrogram_name)
             try:
                 time_series, _ = librosa.load(wave_path, sr=44100)
-            except audioop.error:
+            except (audioop.error, EOFError):
                 print("Error reading {}".format(wave_path))
                 continue
             save_spectrogram(time_series, spectrogram_path, args.mfcc)
