@@ -1,5 +1,6 @@
 import os
 import csv
+import math
 import string
 import random
 import hashlib
@@ -7,22 +8,23 @@ import argparse
 import itertools
 from collections import Counter
 
-from pydub import AudioSegment
-from pydub.exceptions import CouldntDecodeError
+import librosa
+import numpy as np
+from PIL import Image
 
 
 def make_args():
     parser = argparse.ArgumentParser(description="Generate test and evaluation sets from multiple sources.")
     parser.add_argument('--per-speaker', default=20, type=int, help="Limit the number of recordings per speaker")
     parser.add_argument('-a', '--audio-dirs', nargs='+', required=True, help="Directory containing audio files (to check if entries exist, should be provided for each dataset)")
-    parser.add_argument('-i', '--input-lists',nargs='+', required=True, help="A CSV file containing the list of audio file, language pairs (can be provided multiple times)")
+    parser.add_argument('-i', '--input-lists', nargs='+', required=True, help="A CSV file containing the list of audio file, language pairs (can be provided multiple times)")
     parser.add_argument('-c', '--input-limits', nargs='+', type=int, help="Limit the number of recordings per language in the respective dataset (can be provided multiple times)")
-    parser.add_argument('--eval-samples-dir', default='eval_samples', help="Directory where the generated evaluation samples will be stored")
     parser.add_argument('--no-missing-check', default=False, action='store_true', help="Do not check if data samples actually exist")
-    parser.add_argument('-t', '--train-file', required=True, help="Output file for training set")
-    parser.add_argument('-e', '--eval-file', required=True, help="Output file for evaluation set")
-    parser.add_argument('-s', '--eval-split', default=10, type=int, help="At least what percent of data should go to the evaluation set.")
-    parser.add_argument('-l', '--langs', help="Comma-separated list of language codes to include.")
+    parser.add_argument('-o', '--output-dir', required=True, help="Output directory where spectrograms and CSV list files will be placed")
+    parser.add_argument('-t', '--train-file', default="train_set.csv", help="Output file for training set")
+    parser.add_argument('-e', '--eval-file', default="eval_set.csv", help="Output file for evaluation set")
+    parser.add_argument('-s', '--eval-split', default=10, type=int, help="At least what percent of data should go to the evaluation set")
+    parser.add_argument('-l', '--langs', help="Comma-separated list of language codes to include")
     return parser.parse_args()
 
 
@@ -89,32 +91,47 @@ def split(entries, at=10):
     return eval_set, entries[position:]
 
 
+def save_spectrogram(time_series, png_path):
+    spectrogram = librosa.core.logamplitude(
+        librosa.core.stft(time_series, window='hann', n_fft=1024, hop_length=512),
+        amin=0.0008,
+        ref=np.max,
+    )
+    spectrogram = np.abs(spectrogram)
+    spectrogram *= 255. / np.max(spectrogram, axis=0)
+    spectrogram = np.flipud(255 - spectrogram)
+
+    # Write the image to a file
+    image = Image.fromarray(spectrogram[-128:, :])
+    image = image.convert('L')
+    image.save(png_path)
+    print("Saving {}".format(png_path))
+
+
 def generate_short_samples(args, entries, duration=5):
     """For each given filename, split it into chunks of given duration."""
     slice_list = []
     print("Generating {} second evaluation samples".format(duration))
 
-    # Create the output directory if it does not exist
-    os.makedirs(args.eval_samples_dir, exist_ok=True)
-
     for audio_filename, lang, _, audio_dir in entries:
         try:
-            recording = AudioSegment.from_mp3(os.path.join(audio_dir, audio_filename))
-        except CouldntDecodeError:
+            recording, sampling_rate = librosa.load(os.path.join(audio_dir, audio_filename), sr=44100)
+        except:
             print("Error decoding {}".format(audio_filename))
             continue
 
-        recording_slices = recording[::duration * 1000]
-        for slice_num, rec_slice in enumerate(recording_slices):
-            name_base, name_ext = os.path.splitext(audio_filename)
-            file_format = name_ext.strip('.')
-            slice_name = '{0}_{3}s_{2}{1}'.format(name_base, name_ext, slice_num + 1, duration)
-            slice_path = os.path.join(args.eval_samples_dir, slice_name)
+        n_full_chunks = math.floor(len(recording) / sampling_rate / duration)
+        if n_full_chunks == 0:
+            continue
 
-            if len(rec_slice) == duration * 1000:
-                # Only save slices of the desired duration
-                rec_slice.export(slice_path, format=file_format)
-                slice_list.append([slice_name, lang])
+        recording_slices = np.split(recording[:n_full_chunks * sampling_rate * duration], n_full_chunks)
+        for slice_num, rec_slice in enumerate(recording_slices):
+            name_base, _ = os.path.splitext(audio_filename)
+            slice_name = '{0}_{2}s_{1}.png'.format(name_base, slice_num + 1, duration)
+            slice_path = os.path.join(args.output_dir, slice_name)
+
+            save_spectrogram(rec_slice, slice_path)
+            slice_list.append([slice_name, lang])
     return slice_list
 
 
@@ -122,27 +139,46 @@ def write_output(args, train_set, eval_set):
     train_set = list(train_set)
     eval_set = list(eval_set)
 
+    # Create output directory if it does not exist yet
+    os.makedirs(args.output_dir, exist_ok=True)
+
     # Write the training set
-    print("Writing training set to {}".format(args.train_file))
+    train_file = os.path.join(args.output_dir, args.train_file)
+    print("Writing training set to {}".format(train_file))
     with open(args.train_file, 'w') as train_file:
         train_csv = csv.writer(train_file)
-        train_set = [e[:2] for e in train_set]
         random.shuffle(train_set)
-        train_csv.writerows(train_set)
+        for row in train_set:
+            train_csv.writerow(row[:2])
+
+            wave_path = os.path.join(row[3], row[0])
+            spectrogram_name = '{}.png'.format(os.path.splitext(row[0])[0])
+            spectrogram_path = os.path.join(args.output_dir, spectrogram_name)
+            time_series, _ = librosa.load(wave_path, sr=44100)
+            save_spectrogram(time_series, spectrogram_path)
 
     # Write the full evalutaion set
-    print("Writing full evaluation set to {}".format(args.eval_file))
+    eval_file = os.path.join(args.output_dir, args.eval_file)
+    print("Writing full evaluation set to {}".format(eval_file))
     with open(args.eval_file, 'w') as eval_file:
         eval_csv = csv.writer(eval_file)
-        eval_csv.writerows([e[:2] for e in eval_set])
+        for row in eval_set:
+            eval_csv.writerow(row[:2])
+
+            wave_path = os.path.join(row[3], row[0])
+            spectrogram_name = '{}.png'.format(os.path.splitext(row[0])[0])
+            spectrogram_path = os.path.join(args.output_dir, spectrogram_name)
+            time_series, _ = librosa.load(wave_path, sr=44100)
+            save_spectrogram(time_series, spectrogram_path)
 
     # Write the evaluation sets of exact sample length
     for duration in (3, 5, 10):
         eval_duration_set = generate_short_samples(args, eval_set, duration=duration)
         eval_basename, eval_ext = os.path.splitext(args.eval_file)
         eval_duration_filename = '{}_{}s{}'.format(eval_basename, duration, eval_ext)
+        eval_duration_path = os.path.join(args.output_dir, eval_duration_filename)
         print("Writing {} second evaluation samples to {}".format(duration, eval_duration_filename))
-        with open(eval_duration_filename, 'w') as eval_file:
+        with open(eval_duration_path, 'w') as eval_file:
             eval_csv = csv.writer(eval_file)
             eval_duration_set = (e[:2] for e in eval_duration_set)
             eval_csv.writerows(eval_duration_set)
