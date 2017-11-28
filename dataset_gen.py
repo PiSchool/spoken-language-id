@@ -94,7 +94,10 @@ def split(entries, at=10):
     return eval_set, entries[position:]
 
 
-def save_spectrogram(time_series, png_path, mfcc=False):
+def save_spectrogram(time_series, png_path, mfcc=False, verbose=False):
+    if verbose:
+        print("Preparing a spectrogram {}".format(png_path))
+
     if mfcc:
         spectrogram = librosa.core.logamplitude(
             librosa.feature.mfcc(time_series, sr=44100, n_mfcc=40)
@@ -113,7 +116,6 @@ def save_spectrogram(time_series, png_path, mfcc=False):
     image = Image.fromarray(spectrogram[-128:, :])
     image = image.convert('L')
     image.save(png_path)
-    print("Saving {}".format(png_path))
 
 
 def generate_short_samples(args, entries, duration=5):
@@ -139,7 +141,10 @@ def generate_short_samples(args, entries, duration=5):
             slice_path = os.path.join(args.output_dir, slice_name)
 
             save_spectrogram(rec_slice, slice_path, args.mfcc)
+            print('.', end='', flush=True)
+
             slice_list.append([slice_name, lang])
+    print()
     return slice_list
 
 
@@ -152,7 +157,7 @@ def write_output(args, train_set, eval_set):
 
     # Write the training set
     train_file = os.path.join(args.output_dir, args.train_file)
-    print("Writing training set to {}".format(train_file))
+    print("Writing the training set of {} files to {}".format(len(train_set), train_file))
     with open(args.train_file, 'w') as train_file:
         train_csv = csv.writer(train_file)
         random.shuffle(train_set)
@@ -166,12 +171,14 @@ def write_output(args, train_set, eval_set):
                 print("Error reading {}".format(wave_path))
                 continue
             save_spectrogram(time_series, spectrogram_path, args.mfcc)
+            print('.', end='', flush=True)
 
             train_csv.writerow(row[:2])
+    print()
 
     # Write the full evalutaion set
     eval_file = os.path.join(args.output_dir, args.eval_file)
-    print("Writing full evaluation set to {}".format(eval_file))
+    print("Writing the full evaluation set of {} files to {}".format(len(eval_set), eval_file))
     with open(args.eval_file, 'w') as eval_file:
         eval_csv = csv.writer(eval_file)
         for row in eval_set:
@@ -184,8 +191,10 @@ def write_output(args, train_set, eval_set):
                 print("Error reading {}".format(wave_path))
                 continue
             save_spectrogram(time_series, spectrogram_path, args.mfcc)
+            print('.', end='', flush=True)
 
             eval_csv.writerow(row[:2])
+    print()
 
     # Write the evaluation sets of exact sample length
     for duration in (3, 5, 10):
