@@ -17,8 +17,8 @@ from PIL import Image
 def make_args():
     parser = argparse.ArgumentParser(description="Generate test and evaluation sets from multiple sources.")
     parser.add_argument('--per-speaker', default=20, type=int, help="Limit the number of recordings per speaker")
-    parser.add_argument('-a', '--audio-dirs', nargs='+', required=True, help="Directory containing audio files (to check if entries exist, should be provided for each dataset)")
-    parser.add_argument('-i', '--input-lists', nargs='+', required=True, help="A CSV file containing the list of audio file, language pairs (can be provided multiple times)")
+    parser.add_argument('-a', '--audio-dirs', nargs='+', help="Directory containing audio files (to check if entries exist, should be provided for each dataset)")
+    parser.add_argument('-i', '--input-lists', nargs='+', help="A CSV file containing the list of audio file, language pairs (can be provided multiple times)")
     parser.add_argument('-c', '--input-limits', nargs='+', type=int, help="Limit the number of recordings per language in the respective dataset (can be provided multiple times)")
     parser.add_argument('--no-missing-check', default=False, action='store_true', help="Do not check if data samples actually exist")
     parser.add_argument('--mfcc', default=False, action='store_true', help="Make MFCCs instead of linear spectrograms")
@@ -27,6 +27,7 @@ def make_args():
     parser.add_argument('-e', '--eval-file', default="eval_set.csv", help="Output file for evaluation set")
     parser.add_argument('-s', '--eval-split', default=10, type=int, help="At least what percent of data should go to the evaluation set")
     parser.add_argument('-l', '--langs', help="Comma-separated list of language codes to include")
+    parser.add_argument('-z', '--single', help="Simply convert a single audio file to a spectrogram and save in the output directory")
     return parser.parse_args()
 
 
@@ -209,6 +210,15 @@ if __name__ == '__main__':
         'it': 'Italian',
         'pt': 'Portuguese',
     }
+
+    if args.single:
+        # Convert a single audio file into a spectrogram and exit
+        time_series, _ = librosa.load(args.single, sr=44100)
+
+        spectrogram_name = '{}.png'.format(os.path.splitext(os.path.basename(args.single))[0])
+        spectrogram_path = os.path.join(args.output_dir, spectrogram_name)
+        save_spectrogram(time_series, spectrogram_path, args.mfcc)
+        exit()
 
     if len(args.audio_dirs) != len(args.input_lists):
         print("You should specifiy as many audio directories as input list files.")
