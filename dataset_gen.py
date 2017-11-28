@@ -20,6 +20,7 @@ def make_args():
     parser.add_argument('-i', '--input-lists', nargs='+', required=True, help="A CSV file containing the list of audio file, language pairs (can be provided multiple times)")
     parser.add_argument('-c', '--input-limits', nargs='+', type=int, help="Limit the number of recordings per language in the respective dataset (can be provided multiple times)")
     parser.add_argument('--no-missing-check', default=False, action='store_true', help="Do not check if data samples actually exist")
+    parser.add_argument('--mfcc', default=False, action='store_true', help="Make MFCCs instead of linear spectrograms")
     parser.add_argument('-o', '--output-dir', required=True, help="Output directory where spectrograms and CSV list files will be placed")
     parser.add_argument('-t', '--train-file', default="train_set.csv", help="Output file for training set")
     parser.add_argument('-e', '--eval-file', default="eval_set.csv", help="Output file for evaluation set")
@@ -91,12 +92,17 @@ def split(entries, at=10):
     return eval_set, entries[position:]
 
 
-def save_spectrogram(time_series, png_path):
-    spectrogram = librosa.core.logamplitude(
-        librosa.core.stft(time_series, window='hann', n_fft=1024, hop_length=512),
-        amin=0.0008,
-        ref=np.max,
-    )
+def save_spectrogram(time_series, png_path, mfcc=False):
+    if mfcc:
+        spectrogram = librosa.core.logamplitude(
+            librosa.feature.mfcc(time_series, sr=44100, n_mfcc=40)
+        )
+    else:
+        spectrogram = librosa.core.logamplitude(
+            librosa.core.stft(time_series, window='hann', n_fft=1024, hop_length=512),
+            amin=0.0008,
+            ref=np.max,
+        )
     spectrogram = np.abs(spectrogram)
     spectrogram *= 255. / np.max(spectrogram, axis=0)
     spectrogram = np.flipud(255 - spectrogram)
@@ -130,7 +136,7 @@ def generate_short_samples(args, entries, duration=5):
             slice_name = '{0}_{2}s_{1}.png'.format(name_base, slice_num + 1, duration)
             slice_path = os.path.join(args.output_dir, slice_name)
 
-            save_spectrogram(rec_slice, slice_path)
+            save_spectrogram(rec_slice, slice_path, args.mfcc)
             slice_list.append([slice_name, lang])
     return slice_list
 
@@ -155,7 +161,7 @@ def write_output(args, train_set, eval_set):
             spectrogram_name = '{}.png'.format(os.path.splitext(row[0])[0])
             spectrogram_path = os.path.join(args.output_dir, spectrogram_name)
             time_series, _ = librosa.load(wave_path, sr=44100)
-            save_spectrogram(time_series, spectrogram_path)
+            save_spectrogram(time_series, spectrogram_path, args.mfcc)
 
     # Write the full evalutaion set
     eval_file = os.path.join(args.output_dir, args.eval_file)
@@ -169,7 +175,7 @@ def write_output(args, train_set, eval_set):
             spectrogram_name = '{}.png'.format(os.path.splitext(row[0])[0])
             spectrogram_path = os.path.join(args.output_dir, spectrogram_name)
             time_series, _ = librosa.load(wave_path, sr=44100)
-            save_spectrogram(time_series, spectrogram_path)
+            save_spectrogram(time_series, spectrogram_path, args.mfcc)
 
     # Write the evaluation sets of exact sample length
     for duration in (3, 5, 10):
