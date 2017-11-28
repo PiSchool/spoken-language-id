@@ -8,6 +8,7 @@ import argparse
 import itertools
 from collections import Counter
 
+import audioop
 import librosa
 import numpy as np
 from PIL import Image
@@ -155,13 +156,17 @@ def write_output(args, train_set, eval_set):
         train_csv = csv.writer(train_file)
         random.shuffle(train_set)
         for row in train_set:
-            train_csv.writerow(row[:2])
-
             wave_path = os.path.join(row[3], row[0])
             spectrogram_name = '{}.png'.format(os.path.splitext(row[0])[0])
             spectrogram_path = os.path.join(args.output_dir, spectrogram_name)
-            time_series, _ = librosa.load(wave_path, sr=44100)
+            try:
+                time_series, _ = librosa.load(wave_path, sr=44100)
+            except audioop.error:
+                print("Error reading {}".format(wave_path))
+                continue
             save_spectrogram(time_series, spectrogram_path, args.mfcc)
+
+            train_csv.writerow(row[:2])
 
     # Write the full evalutaion set
     eval_file = os.path.join(args.output_dir, args.eval_file)
@@ -169,13 +174,17 @@ def write_output(args, train_set, eval_set):
     with open(args.eval_file, 'w') as eval_file:
         eval_csv = csv.writer(eval_file)
         for row in eval_set:
-            eval_csv.writerow(row[:2])
-
             wave_path = os.path.join(row[3], row[0])
             spectrogram_name = '{}.png'.format(os.path.splitext(row[0])[0])
             spectrogram_path = os.path.join(args.output_dir, spectrogram_name)
-            time_series, _ = librosa.load(wave_path, sr=44100)
+            try:
+                time_series, _ = librosa.load(wave_path, sr=44100)
+            except audioop.error:
+                print("Error reading {}".format(wave_path))
+                continue
             save_spectrogram(time_series, spectrogram_path, args.mfcc)
+
+            eval_csv.writerow(row[:2])
 
     # Write the evaluation sets of exact sample length
     for duration in (3, 5, 10):
