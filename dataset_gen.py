@@ -100,7 +100,7 @@ def save_spectrogram(time_series, png_path, mfcc=False, verbose=False):
 
     if mfcc:
         spectrogram = librosa.core.logamplitude(
-            librosa.feature.mfcc(time_series, sr=44100, n_mfcc=40)
+            librosa.feature.mfcc(time_series, sr=44100, n_mfcc=20)
         )
     else:
         spectrogram = librosa.core.logamplitude(
