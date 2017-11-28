@@ -293,13 +293,13 @@ def predict_single(model_fn, run_config, params, png_path):
 def find_best_checkpoint(run_config):
     # Check if there is a special checkpoint with the best accuracy
     model_files = os.listdir(run_config.model_dir)
-    best_checkpoint = sorted(
+    best_checkpoints = sorted(
         [f for f in model_files if 'best.ckpt' in f and 'index' in f],
         key=lambda fname: int(''.join(filter(str.isdigit, fname)))
-    )[-1]
+    )
 
-    if best_checkpoint:
-        best_checkpoint_name = os.path.splitext(best_checkpoint)[0]
+    if best_checkpoints:
+        best_checkpoint_name = os.path.splitext(best_checkpoints[-1])[0]
         return os.path.join(run_config.model_dir, best_checkpoint_name)
 
     return None
