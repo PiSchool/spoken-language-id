@@ -156,9 +156,9 @@ def write_output(args, train_set, eval_set):
     os.makedirs(args.output_dir, exist_ok=True)
 
     # Write the training set
-    train_file = os.path.join(args.output_dir, args.train_file)
-    print("Writing the training set of {} files to {}".format(len(train_set), train_file))
-    with open(args.train_file, 'w') as train_file:
+    train_filename = os.path.join(args.output_dir, args.train_file)
+    print("Writing the training set of {} files to {}".format(len(train_set), train_filename))
+    with open(train_filename, 'w') as train_file:
         train_csv = csv.writer(train_file)
         random.shuffle(train_set)
         for row in train_set:
@@ -177,9 +177,9 @@ def write_output(args, train_set, eval_set):
     print()
 
     # Write the full evalutaion set
-    eval_file = os.path.join(args.output_dir, args.eval_file)
-    print("Writing the full evaluation set of {} files to {}".format(len(eval_set), eval_file))
-    with open(args.eval_file, 'w') as eval_file:
+    eval_filename = os.path.join(args.output_dir, args.eval_file)
+    print("Writing the full evaluation set of {} files to {}".format(len(eval_set), eval_filename))
+    with open(eval_filename, 'w') as eval_file:
         eval_csv = csv.writer(eval_file)
         for row in eval_set:
             wave_path = os.path.join(row[3], row[0])
