@@ -7,6 +7,14 @@ def languid_combo(features, training, params):
     batch_size = tf.shape(features)[0]
     input_sgram = tf.reshape(features, [batch_size, -1, params.spectrogram_bins])
 
+    # Smaller kernels for less spectrogram bins (e.g. MFCC)
+    if params.spectrogram_bins < 30:
+        kernels = [4, 2, 2, 2]
+        pool_strides = [(2, 1), 1, 1, 1]
+    else:
+        kernels = [7, 5, 3, 3]
+        pool_strides = [(2, 1), (2, 1), (2, 1), (2, 1)]
+
     # Switch time and freq axis
     input_reshaped = tf.transpose(input_sgram, perm=[0, 2, 1])
 
@@ -15,19 +23,19 @@ def languid_combo(features, training, params):
 
     with tf.variable_scope("CNN"):
         convpool = convpool_layers(
-            input_reshaped, training, filters=16, kernel_size=7, pool_size=3, pool_strides=(2, 1),
+            input_reshaped, training, filters=16, kernel_size=kernels[0], pool_size=3, pool_strides=pool_strides[0],
             normalize=params.normalize, pool_dropout=params.pool_dropout,
         )
         convpool = convpool_layers(
-            convpool, training, filters=32, kernel_size=5, pool_size=3, pool_strides=(2, 1),
+            convpool, training, filters=32, kernel_size=kernels[1], pool_size=3, pool_strides=pool_strides[1],
             normalize=params.normalize, pool_dropout=params.pool_dropout,
         )
         convpool = convpool_layers(
-            convpool, training, filters=32, kernel_size=3, pool_size=3, pool_strides=(2, 1),
+            convpool, training, filters=32, kernel_size=kernels[2], pool_size=3, pool_strides=pool_strides[2],
             normalize=params.normalize, pool_dropout=params.pool_dropout,
         )
         convpool = convpool_layers(
-            convpool, training, filters=32, kernel_size=3, pool_size=3, pool_strides=(2, 1),
+            convpool, training, filters=32, kernel_size=kernels[3], pool_size=3, pool_strides=pool_strides[3],
             normalize=params.normalize, pool_dropout=params.pool_dropout,
         )
 
