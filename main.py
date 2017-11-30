@@ -60,6 +60,11 @@ tf.app.flags.DEFINE_string(
     default_value=None,
     docstring='Predict language for all png spectrograms in the specified directory.'
 )
+tf.app.flags.DEFINE_string(
+    flag_name='model-checkpoint',
+    default_value=None,
+    docstring='Use the specified checkpoint file.'
+)
 
 
 def get_params():
@@ -260,6 +265,24 @@ def experiment_fn(model_fn, run_config, params):
     return experiment
 
 
+def find_best_checkpoint(run_config):
+    if FLAGS.model_checkpoint:
+        return os.path.join(run_config.model_dir, FLAGS.model_checkpoint)
+
+    # Check if there is a special checkpoint with the best accuracy
+    model_files = os.listdir(run_config.model_dir)
+    best_checkpoints = sorted(
+        [f for f in model_files if 'best.ckpt' in f and 'index' in f],
+        key=lambda fname: int(''.join(filter(str.isdigit, fname)))
+    )
+
+    if best_checkpoints:
+        best_checkpoint_name = os.path.splitext(best_checkpoints[-1])[0]
+        return os.path.join(run_config.model_dir, best_checkpoint_name)
+
+    return None
+
+
 def predict_single(model_fn, run_config, params, png_path):
     """Predict the language given the path to a single spectrogram in png format."""
     model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
@@ -273,7 +296,11 @@ def predict_single(model_fn, run_config, params, png_path):
     else:
         language_list = params.language_list
 
-    iterator = model.predict(input_fn=lambda: TCData.instance_as_tensor(png_path))
+    checkpoint_path = find_best_checkpoint(run_config)
+    iterator = model.predict(
+        input_fn=lambda: TCData.instance_as_tensor(png_path),
+        checkpoint_path=checkpoint_path,
+    )
     prediction = next(iterator)
 
     # Generate a list of (lang_id, probability) pairs
@@ -290,27 +317,12 @@ def predict_single(model_fn, run_config, params, png_path):
     tf.logging.info("\n".join(pred_probs))
 
 
-def find_best_checkpoint(run_config):
-    # Check if there is a special checkpoint with the best accuracy
-    model_files = os.listdir(run_config.model_dir)
-    best_checkpoints = sorted(
-        [f for f in model_files if 'best.ckpt' in f and 'index' in f],
-        key=lambda fname: int(''.join(filter(str.isdigit, fname)))
-    )
-
-    if best_checkpoints:
-        best_checkpoint_name = os.path.splitext(best_checkpoints[-1])[0]
-        return os.path.join(run_config.model_dir, best_checkpoint_name)
-
-    return None
-
-
 def evaluate(model_fn, run_config, params):
     # Set necessary parameters
     params.set_from_map({
         'eval_epochs': 1,
         'eval_percent': 100,
-        'batch_size': 5
+        'batch_size': 8
     })
     model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
     input_fn, input_hook = get_inputs(params, validation=True)
