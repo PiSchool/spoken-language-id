@@ -28,6 +28,7 @@ def make_args():
     parser.add_argument('-s', '--eval-split', default=10, type=int, help="At least what percent of data should go to the evaluation set")
     parser.add_argument('-l', '--langs', help="Comma-separated list of language codes to include")
     parser.add_argument('-z', '--single', help="Simply convert a single audio file to a spectrogram and save in the output directory")
+    parser.add_argument('-p', '--augment', type=int, help="If greater than zero, create the specified amount of perturbations")
     return parser.parse_args()
 
 
@@ -94,7 +95,21 @@ def split(entries, at=10):
     return eval_set, entries[position:]
 
 
-def save_spectrogram(time_series, png_path, mfcc=False, verbose=False):
+def _write_spectrogram(spectrogram, png_path):
+    # Map to 0-255 range
+    spectrogram = spectrogram[:128, :]
+    spectrogram = np.abs(spectrogram)
+    spectrogram -= np.min(spectrogram)
+    spectrogram *= 255. / np.max(spectrogram)
+    spectrogram = np.flipud(abs(255. - spectrogram))
+
+    # Write the image to a file
+    image = Image.fromarray(spectrogram[-128:, :])
+    image = image.convert('L')
+    image.save(png_path)
+
+
+def generate_spectrograms(time_series, png_path, mfcc=False, verbose=False, augment=0):
     if verbose:
         print("Preparing a spectrogram {}".format(png_path))
 
@@ -108,14 +123,75 @@ def save_spectrogram(time_series, png_path, mfcc=False, verbose=False):
             amin=0.0008,
             ref=np.max,
         )
-    spectrogram = np.abs(spectrogram)
-    spectrogram *= 255. / np.max(spectrogram, axis=0)
-    spectrogram = np.flipud(255 - spectrogram)
 
-    # Write the image to a file
-    image = Image.fromarray(spectrogram[-128:, :])
-    image = image.convert('L')
-    image.save(png_path)
+    for aug_id in range(augment):
+        # Perform a vocal tract length perturbation
+        alpha_range = (0.9, 1.1)
+        alpha = np.random.uniform(*alpha_range)
+        perturbed_spectrogram = perturb(spectrogram, alpha=alpha)
+        basename, _ = os.path.splitext(png_path)
+        aug_name = '{name}_aug{aug_id}.png'.format(name=basename, aug_id=aug_id + 1)
+
+        # Write the perturbed spectrogram
+        print("Writing augmented", aug_name)
+        _write_spectrogram(perturbed_spectrogram, aug_name)
+
+    # Write the original spectrogram
+    _write_spectrogram(spectrogram, png_path)
+
+
+def get_time_series(wave_path, trim=False):
+    try:
+        time_series, sampling_rate = librosa.load(wave_path, sr=44100)
+    except (audioop.error, EOFError):
+        print("Error reading {}".format(wave_path))
+        return None, None
+
+    if np.max(time_series) == 0:
+        # This clip is just silence
+        return None, None
+
+    if trim:
+        # Trim silence
+        time_series, (start, end) = librosa.effects.trim(time_series)
+
+        if end == 0:
+            # This clip is just silence
+            return None, None
+
+    return time_series, sampling_rate
+
+
+def perturb(spec, sr=44100, alpha=1.0, f0=0.9, fmax=1):
+    """Adapted from https://github.com/YerevaNN/Spoken-language-identification/"""
+    spec = np.transpose(spec)
+
+    timebins, freqbins = np.shape(spec)
+    scale = np.linspace(0, 1, freqbins)
+
+    # http://ieeexplore.ieee.org/xpl/login.jsp?tp=&arnumber=650310&url=http%3A%2F%2Fieeexplore.ieee.org%2Fiel4%2F89%2F14168%2F00650310
+    log_scaled = map(lambda x: x * alpha if x <= f0 else (fmax-alpha*f0)/(fmax-f0)*(x-f0)+alpha*f0, scale)
+    scale = np.array(list(log_scaled))
+    scale *= (freqbins - 1) / max(scale)
+
+    newspec = np.complex128(np.zeros([timebins, freqbins]))
+
+    # Frequencies represented by the bins
+    allfreqs = np.abs(np.fft.fftfreq(freqbins * 2, 1. / sr)[:freqbins + 1])
+
+    xspec = np.complex128(np.zeros([timebins, freqbins]))
+    for i in range(freqbins):
+        lower = scale[i]
+        upper = scale[i + 1] if i + 1 < freqbins else lower + 1
+
+        # Look for overlaps
+        for pot in range(int(np.floor(lower)), int(np.ceil(upper))):
+            min_dist = min(1, upper - lower)
+            overlap = max(0, min(pot + 1 - lower, upper - pot, min_dist))
+            prop = overlap / (upper - lower)
+            xspec[:, pot] += prop * spec[:, i]
+
+    return np.transpose(xspec)
 
 
 def generate_short_samples(args, entries, duration=5):
@@ -124,10 +200,8 @@ def generate_short_samples(args, entries, duration=5):
     print("Generating {} second evaluation samples".format(duration))
 
     for audio_filename, lang, _, audio_dir in entries:
-        try:
-            recording, sampling_rate = librosa.load(os.path.join(audio_dir, audio_filename), sr=44100)
-        except (audioop.error, EOFError):
-            print("Error reading {}".format(audio_filename))
+        recording, sampling_rate = get_time_series(os.path.join(audio_dir, audio_filename))
+        if recording is None:
             continue
 
         n_full_chunks = math.floor(len(recording) / sampling_rate / duration)
@@ -140,7 +214,7 @@ def generate_short_samples(args, entries, duration=5):
             slice_name = '{0}_{2}s_{1}.png'.format(name_base, slice_num + 1, duration)
             slice_path = os.path.join(args.output_dir, slice_name)
 
-            save_spectrogram(rec_slice, slice_path, args.mfcc)
+            generate_spectrograms(rec_slice, slice_path, args.mfcc)
             print('.', end='', flush=True)
 
             slice_list.append([slice_name, lang])
@@ -165,12 +239,10 @@ def write_output(args, train_set, eval_set):
             wave_path = os.path.join(row[3], row[0])
             spectrogram_name = '{}.png'.format(os.path.splitext(row[0])[0])
             spectrogram_path = os.path.join(args.output_dir, spectrogram_name)
-            try:
-                time_series, _ = librosa.load(wave_path, sr=44100)
-            except (audioop.error, EOFError):
-                print("Error reading {}".format(wave_path))
+            time_series, _ = get_time_series(wave_path)
+            if time_series is None:
                 continue
-            save_spectrogram(time_series, spectrogram_path, args.mfcc)
+            generate_spectrograms(time_series, spectrogram_path, args.mfcc, augment=args.augment)
             print('.', end='', flush=True)
 
             train_csv.writerow(row[:2])
@@ -185,12 +257,10 @@ def write_output(args, train_set, eval_set):
             wave_path = os.path.join(row[3], row[0])
             spectrogram_name = '{}.png'.format(os.path.splitext(row[0])[0])
             spectrogram_path = os.path.join(args.output_dir, spectrogram_name)
-            try:
-                time_series, _ = librosa.load(wave_path, sr=44100)
-            except (audioop.error, EOFError):
-                print("Error reading {}".format(wave_path))
+            time_series, _ = get_time_series(wave_path)
+            if time_series is None:
                 continue
-            save_spectrogram(time_series, spectrogram_path, args.mfcc)
+            generate_spectrograms(time_series, spectrogram_path, args.mfcc)
             print('.', end='', flush=True)
 
             eval_csv.writerow(row[:2])
@@ -226,7 +296,7 @@ if __name__ == '__main__':
 
         spectrogram_name = '{}.png'.format(os.path.splitext(os.path.basename(args.single))[0])
         spectrogram_path = os.path.join(args.output_dir, spectrogram_name)
-        save_spectrogram(time_series, spectrogram_path, args.mfcc)
+        generate_spectrograms(time_series, spectrogram_path, args.mfcc)
         exit()
 
     if len(args.audio_dirs) != len(args.input_lists):
