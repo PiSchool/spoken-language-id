@@ -6,10 +6,10 @@ from functools import partial
 import tensorflow as tf
 
 from models.base import base_model_fn
-from models.combo import languid_combo as languid_combo_model
-from models.rnn import languid_rnn as languid_rnn_model
-from models.cnn import languid_cnn as languid_cnn_model
-from models.montavon import languid_montavon as languid_montavon_model
+from models.combo import LanguidCombo
+from models.rnn import LanguidRNN
+from models.cnn import LanguidCNN
+from models.montavon import LanguidMontavon
 from data import TCData
 
 
@@ -121,19 +121,19 @@ def get_params():
 
     if FLAGS.model == 'combo':
         params = combo_params
-        model_fn = partial(base_model_fn, languid_combo_model)
+        model_fn = partial(base_model_fn, LanguidCombo)
         tf.logging.info("Running the COMBO model")
     elif FLAGS.model == 'cnn':
         params = cnn_params
-        model_fn = partial(base_model_fn, languid_cnn_model)
+        model_fn = partial(base_model_fn, LanguidCNN)
         tf.logging.info("Running the CNN model")
     elif FLAGS.model == 'rnn':
         params = rnn_params
-        model_fn = partial(base_model_fn, languid_rnn_model)
+        model_fn = partial(base_model_fn, LanguidRNN)
         tf.logging.info("Running the RNN model")
     elif FLAGS.model == 'montavon':
         params = montavon_params
-        model_fn = partial(base_model_fn, languid_montavon_model)
+        model_fn = partial(base_model_fn, LanguidMontavon)
         tf.logging.info("Running the Montavon model")
 
     # Parameters can be overridden from a JSON file

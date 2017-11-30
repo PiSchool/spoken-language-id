@@ -23,8 +23,9 @@ def convpool_layers(inputs, training, filters, kernel_size,
     return pool
 
 
-def base_model_fn(model, features, labels, mode, params):
-    logits = model(features, training=mode == tf.estimator.ModeKeys.TRAIN, params=params)
+def base_model_fn(model_class, features, labels, mode, params):
+    model = model_class(features, training=mode == tf.estimator.ModeKeys.TRAIN, params=params)
+    logits = model.get_prediction_logits()
 
     # The prediction
     pred_classes = tf.argmax(logits, axis=-1)
