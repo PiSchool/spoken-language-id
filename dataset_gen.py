@@ -28,7 +28,7 @@ def make_args():
     parser.add_argument('-s', '--eval-split', default=10, type=int, help="At least what percent of data should go to the evaluation set")
     parser.add_argument('-l', '--langs', help="Comma-separated list of language codes to include")
     parser.add_argument('-z', '--single', help="Simply convert a single audio file to a spectrogram and save in the output directory")
-    parser.add_argument('-p', '--augment', type=int, help="If greater than zero, create the specified amount of perturbations")
+    parser.add_argument('-p', '--augment', default=0, type=int, help="If greater than zero, create the specified amount of perturbations")
     return parser.parse_args()
 
 
@@ -124,6 +124,10 @@ def generate_spectrograms(time_series, png_path, mfcc=False, verbose=False, augm
             ref=np.max,
         )
 
+    # Write the original spectrogram
+    _write_spectrogram(spectrogram, png_path)
+    spec_names = [png_path]
+
     for aug_id in range(augment):
         # Perform a vocal tract length perturbation
         alpha_range = (0.9, 1.1)
@@ -133,11 +137,10 @@ def generate_spectrograms(time_series, png_path, mfcc=False, verbose=False, augm
         aug_name = '{name}_aug{aug_id}.png'.format(name=basename, aug_id=aug_id + 1)
 
         # Write the perturbed spectrogram
-        print("Writing augmented", aug_name)
         _write_spectrogram(perturbed_spectrogram, aug_name)
+        spec_names.append(aug_name)
 
-    # Write the original spectrogram
-    _write_spectrogram(spectrogram, png_path)
+    return spec_names
 
 
 def get_time_series(wave_path, trim=False):
@@ -179,7 +182,7 @@ def perturb(spec, sr=44100, alpha=1.0, f0=0.9, fmax=1):
     # Frequencies represented by the bins
     allfreqs = np.abs(np.fft.fftfreq(freqbins * 2, 1. / sr)[:freqbins + 1])
 
-    xspec = np.complex128(np.zeros([timebins, freqbins]))
+    newspec = np.complex128(np.zeros([timebins, freqbins]))
     for i in range(freqbins):
         lower = scale[i]
         upper = scale[i + 1] if i + 1 < freqbins else lower + 1
@@ -189,9 +192,9 @@ def perturb(spec, sr=44100, alpha=1.0, f0=0.9, fmax=1):
             min_dist = min(1, upper - lower)
             overlap = max(0, min(pot + 1 - lower, upper - pot, min_dist))
             prop = overlap / (upper - lower)
-            xspec[:, pot] += prop * spec[:, i]
+            newspec[:, pot] += prop * spec[:, i]
 
-    return np.transpose(xspec)
+    return np.transpose(newspec)
 
 
 def generate_short_samples(args, entries, duration=5):
@@ -231,22 +234,35 @@ def write_output(args, train_set, eval_set):
 
     # Write the training set
     train_filename = os.path.join(args.output_dir, args.train_file)
-    print("Writing the training set of {} files to {}".format(len(train_set), train_filename))
+    print("Writing the training set of {} + {} (augmented) = {} files to {}".format(
+        len(train_set),
+        len(train_set) * args.augment,
+        len(train_set) * (1 + args.augment),
+        train_filename),
+    )
+
+    rows_to_write = []
+    for row in train_set:
+        wave_path = os.path.join(row[3], row[0])
+        spectrogram_name = '{}.png'.format(os.path.splitext(row[0])[0])
+        spectrogram_path = os.path.join(args.output_dir, spectrogram_name)
+        time_series, _ = get_time_series(wave_path)
+        if time_series is None:
+            continue
+        spec_names = generate_spectrograms(time_series, spectrogram_path, args.mfcc, augment=args.augment)
+        print('.' * len(spec_names), end='', flush=True)
+
+        # We might have potentially generated more than one spectrogram per sample
+        for spec_name in spec_names:
+            rows_to_write.append([spec_name, row[1]])
+
     with open(train_filename, 'w') as train_file:
         train_csv = csv.writer(train_file)
-        random.shuffle(train_set)
-        for row in train_set:
-            wave_path = os.path.join(row[3], row[0])
-            spectrogram_name = '{}.png'.format(os.path.splitext(row[0])[0])
-            spectrogram_path = os.path.join(args.output_dir, spectrogram_name)
-            time_series, _ = get_time_series(wave_path)
-            if time_series is None:
-                continue
-            generate_spectrograms(time_series, spectrogram_path, args.mfcc, augment=args.augment)
-            print('.', end='', flush=True)
-
-            train_csv.writerow(row[:2])
+        random.shuffle(rows_to_write)
+        for row in rows_to_write:
+            train_csv.writerow(row)
     print()
+    print("Wrote {} files to the training set (some might have been skipped)".format(len(rows_to_write)))
 
     # Write the full evalutaion set
     eval_filename = os.path.join(args.output_dir, args.eval_file)
