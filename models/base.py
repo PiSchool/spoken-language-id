@@ -2,7 +2,7 @@ import tensorflow as tf
 
 
 class CNNBaseModel:
-    def add_convpool_layers(self, inputs, training, filters, kernel_size,
+    def add_convpool_layer(self, inputs, training, filters, kernel_size,
                     pool_size, pool_strides, normalize, pool_dropout,
                     double_padding=False):
         """A helper function for defining convolutional layers followed my max-pooling."""
