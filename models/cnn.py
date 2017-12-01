@@ -1,9 +1,9 @@
 import tensorflow as tf
 
-from .base import convpool_layers
+from .base import CNNBaseModel
 
 
-class LanguidCNN:
+class LanguidCNN(CNNBaseModel):
     def __init__(self, features, training, params):
         batch_size = tf.shape(features)[0]
 
@@ -18,27 +18,27 @@ class LanguidCNN:
         input_reshaped = tf.expand_dims(input_reshaped, -1)
 
         with tf.variable_scope("CNN"):
-            convpool = convpool_layers(
+            convpool = self.add_convpool_layer(
                 input_reshaped, training, filters=16, kernel_size=7, pool_size=3, pool_strides=2,
                 double_padding=True, normalize=params.normalize, pool_dropout=params.pool_dropout,
             )
-            convpool = convpool_layers(
+            convpool = self.add_convpool_layer(
                 convpool, training, filters=32, kernel_size=5, pool_size=3, pool_strides=2,
                 double_padding=True, normalize=params.normalize, pool_dropout=params.pool_dropout,
             )
-            convpool = convpool_layers(
+            convpool = self.add_convpool_layer(
                 convpool, training, filters=64, kernel_size=3, pool_size=3, pool_strides=2,
                 double_padding=True, normalize=params.normalize, pool_dropout=params.pool_dropout,
             )
-            convpool = convpool_layers(
+            convpool = self.add_convpool_layer(
                 convpool, training, filters=128, kernel_size=3, pool_size=3, pool_strides=2,
                 double_padding=True, normalize=params.normalize, pool_dropout=params.pool_dropout,
             )
-            convpool = convpool_layers(
+            convpool = self.add_convpool_layer(
                 convpool, training, filters=128, kernel_size=3, pool_size=3, pool_strides=2,
                 double_padding=True, normalize=params.normalize, pool_dropout=params.pool_dropout,
             )
-            convpool = convpool_layers(
+            convpool = self.add_convpool_layer(
                 convpool, training, filters=256, kernel_size=3, pool_size=3, pool_strides=(3, 2),
                 double_padding=True, normalize=params.normalize, pool_dropout=params.pool_dropout,
             )

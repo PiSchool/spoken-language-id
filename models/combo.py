@@ -1,8 +1,8 @@
 import tensorflow as tf
 
-from .base import convpool_layers
+from .base import CNNBaseModel
 
-class LanguidCombo:
+class LanguidCombo(CNNBaseModel):
     def __init__(self, features, training, params):
         batch_size = tf.shape(features)[0]
         input_sgram = tf.reshape(features, [batch_size, -1, params.spectrogram_bins])
@@ -22,19 +22,19 @@ class LanguidCombo:
         input_reshaped = tf.expand_dims(input_reshaped, -1)
 
         with tf.variable_scope("CNN"):
-            convpool = convpool_layers(
+            convpool = self.add_convpool_layer(
                 input_reshaped, training, filters=16, kernel_size=kernels[0], pool_size=3, pool_strides=pool_strides[0],
                 normalize=params.normalize, pool_dropout=params.pool_dropout,
             )
-            convpool = convpool_layers(
+            convpool = self.add_convpool_layer(
                 convpool, training, filters=32, kernel_size=kernels[1], pool_size=3, pool_strides=pool_strides[1],
                 normalize=params.normalize, pool_dropout=params.pool_dropout,
             )
-            convpool = convpool_layers(
+            convpool = self.add_convpool_layer(
                 convpool, training, filters=32, kernel_size=kernels[2], pool_size=3, pool_strides=pool_strides[2],
                 normalize=params.normalize, pool_dropout=params.pool_dropout,
             )
-            convpool = convpool_layers(
+            convpool = self.add_convpool_layer(
                 convpool, training, filters=32, kernel_size=kernels[3], pool_size=3, pool_strides=pool_strides[3],
                 normalize=params.normalize, pool_dropout=params.pool_dropout,
             )

@@ -1,9 +1,9 @@
 import tensorflow as tf
 
-from .base import convpool_layers
+from .base import CNNBaseModel
 
 
-class LanguidMontavon:
+class LanguidMontavon(CNNBaseModel):
     def __init__(self, features, training, params):
         batch_size = tf.shape(features)[0]
 
@@ -18,15 +18,15 @@ class LanguidMontavon:
         input_reshaped = tf.expand_dims(input_reshaped, -1)
 
         with tf.variable_scope("CNN"):
-            convpool = convpool_layers(
+            convpool = self.add_convpool_layer(
                 input_reshaped, training, filters=12, kernel_size=6, pool_size=2, pool_strides=2,
                 normalize=params.normalize, pool_dropout=params.pool_dropout,
             )
-            convpool = convpool_layers(
+            convpool = self.add_convpool_layer(
                 convpool, training, filters=144, kernel_size=6, pool_size=2, pool_strides=2,
                 normalize=params.normalize, pool_dropout=params.pool_dropout,
             )
-            convpool = convpool_layers(
+            convpool = self.add_convpool_layer(
                 convpool, training, filters=144, kernel_size=6, pool_size=(1, 141), pool_strides=(1, 141),
                 normalize=params.normalize, pool_dropout=params.pool_dropout,
             )

@@ -1,26 +1,27 @@
 import tensorflow as tf
 
 
-def convpool_layers(inputs, training, filters, kernel_size,
+class CNNBaseModel:
+    def add_convpool_layers(self, inputs, training, filters, kernel_size,
                     pool_size, pool_strides, normalize, pool_dropout,
                     double_padding=False):
-    """A helper function for defining convolutional layers followed my max-pooling."""
-    padding = 'same'
-    if double_padding:
-        # Perform manual padding, because 'same' only pads by one
-        padding = 'valid'
-        inputs = tf.pad(inputs, tf.constant([[0, 0], [2, 2], [2, 2], [0, 0]]))
+        """A helper function for defining convolutional layers followed my max-pooling."""
+        padding = 'same'
+        if double_padding:
+            # Perform manual padding, because 'same' only pads by one
+            padding = 'valid'
+            inputs = tf.pad(inputs, tf.constant([[0, 0], [2, 2], [2, 2], [0, 0]]))
 
-    # Convolutional layer
-    conv = tf.layers.conv2d(inputs, filters=filters, kernel_size=kernel_size, activation=tf.nn.relu)
-    if pool_dropout:
-        conv = tf.layers.dropout(conv, rate=pool_dropout, training=training)
+        # Convolutional layer
+        conv = tf.layers.conv2d(inputs, filters=filters, kernel_size=kernel_size, activation=tf.nn.relu)
+        if pool_dropout:
+            conv = tf.layers.dropout(conv, rate=pool_dropout, training=training)
 
-    # Pooling layer
-    pool = tf.layers.max_pooling2d(conv, pool_size=pool_size, strides=pool_strides, padding=padding)
-    if normalize:
-        pool = tf.contrib.layers.layer_norm(pool)
-    return pool
+        # Pooling layer
+        pool = tf.layers.max_pooling2d(conv, pool_size=pool_size, strides=pool_strides, padding=padding)
+        if normalize:
+            pool = tf.contrib.layers.layer_norm(pool)
+        return pool
 
 
 def base_model_fn(model_class, features, labels, mode, params):
