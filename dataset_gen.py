@@ -14,6 +14,11 @@ import numpy as np
 from PIL import Image
 
 
+# A list of bad quality recordings
+BLACKLIST = ['Eldorplus', 'Eresus', 'Airon90-20091204-zzg-it-0849', 'estaciones_',
+             'JhonattanPaniagua', 'Sam-20090404', 'trabajo-infantil']
+
+
 def make_args():
     parser = argparse.ArgumentParser(description="Generate test and evaluation sets from multiple sources.")
     parser.add_argument('--per-speaker', default=20, type=int, help="Limit the number of recordings per speaker")
@@ -60,6 +65,12 @@ def process_input(args, audio_dir, input_filename, per_lang, languages):
             if lang_counter[lang] > per_lang:
                 # We have enough samples of this language
                 continue
+
+            for banned in BLACKLIST:
+                if banned in audio_filename:
+                    # This filename matches a banned string
+                    print("Not using {} as it contains {}".format(audio_filename, banned))
+                    continue
 
             output_list.append([audio_filename, lang, speaker, audio_dir])
     return output_list, original_count, skipped
