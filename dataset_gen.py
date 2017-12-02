@@ -66,11 +66,10 @@ def process_input(args, audio_dir, input_filename, per_lang, languages):
                 # We have enough samples of this language
                 continue
 
-            for banned in BLACKLIST:
-                if banned in audio_filename:
-                    # This filename matches a banned string
-                    print("Not using {} as it contains {}".format(audio_filename, banned))
-                    continue
+            if any(banned in audio_filename for banned in BLACKLIST):
+                # This filename matches a banned string
+                print("Not using {} as it contains a blacklisted phrase".format(audio_filename))
+                continue
 
             output_list.append([audio_filename, lang, speaker, audio_dir])
     return output_list, original_count, skipped
