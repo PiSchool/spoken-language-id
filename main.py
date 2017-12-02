@@ -231,22 +231,31 @@ def experiment_fn(model_fn, run_config, params):
             super().__init__(checkpoint_dir, save_secs, checkpoint_basename='best.ckpt', *args, **kwargs)
             self.current_best = 0
             self.last_accuracy = 0
+            self.last_total = 0
+            self.last_count = 0
             self.last_step = 0
 
         def before_run(self, run_context):
             g = tf.get_default_graph()
-            accuracy = g.get_tensor_by_name('accuracy/value:0')
-            return tf.train.SessionRunArgs({'accuracy': accuracy})
+            return tf.train.SessionRunArgs({
+                'total': g.get_tensor_by_name('accuracy/total:0'),
+                'count': g.get_tensor_by_name('accuracy/count:0'),
+                'accuracy': g.get_tensor_by_name('accuracy/value:0'),
+            })
 
         def after_run(self, run_context, run_values):
             self.last_accuracy = run_values.results['accuracy']
+            self.last_total = run_values.results['total']
+            self.last_count = run_values.results['count']
 
         def end(self, session):
             if self.last_accuracy > self.current_best:
                 # We've finished the evaluation run and have a new best
                 self.current_best = self.last_accuracy
                 self._save(session, session.run(self._global_step_tensor))
-                tf.logging.info("New best accuracy {:.7f}, saved to {}.".format(self.current_best, self._save_path))
+                tf.logging.info("New best accuracy {:.7f} ({:.0f} / {:.0f}), saved to {}.".format(
+                    self.current_best, self.last_total, self.last_count, self._save_path
+                ))
 
             for l in self._listeners:
                 l.end(session, last_step)
