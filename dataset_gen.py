@@ -136,19 +136,19 @@ def generate_spectrograms(time_series, png_path, mfcc=False, verbose=False, augm
 
     # Write the original spectrogram
     _write_spectrogram(spectrogram, png_path)
-    spec_names = [png_path]
+    spec_names = [os.path.basename(png_path)]
 
     for aug_id in range(augment):
         # Perform a vocal tract length perturbation
         alpha_range = (0.9, 1.1)
         alpha = np.random.uniform(*alpha_range)
         perturbed_spectrogram = perturb(spectrogram, alpha=alpha)
-        basename, _ = os.path.splitext(png_path)
-        aug_name = '{name}_aug{aug_id}.png'.format(name=basename, aug_id=aug_id + 1)
+        rootname, _ = os.path.splitext(png_path)
+        aug_name = '{name}_aug{aug_id}.png'.format(name=rootname, aug_id=aug_id + 1)
 
         # Write the perturbed spectrogram
         _write_spectrogram(perturbed_spectrogram, aug_name)
-        spec_names.append(aug_name)
+        spec_names.append(os.path.basename(aug_name))
 
     return spec_names
 
