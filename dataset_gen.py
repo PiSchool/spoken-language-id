@@ -16,7 +16,7 @@ from PIL import Image
 
 # A list of bad quality recordings
 BLACKLIST = ['Eldorplus', 'Eresus', 'Airon90-20091204-zzg-it-0849', 'estaciones_',
-             'JhonattanPaniagua', 'Sam-20090404', 'trabajo-infantil']
+             'JhonattanPaniagua', 'Sam-20090404', 'trabajo_infantil', 'Marcelo-20131106']
 
 
 def make_args():
