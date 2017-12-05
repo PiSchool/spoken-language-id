@@ -65,6 +65,20 @@ def base_model_fn(model_class, features, labels, mode, params):
     # Evaluate the accuracy of the model
     accuracy, accuracy_op = tf.metrics.accuracy(labels=labels, predictions=pred_classes)
 
+    # Compute the confusion matrix
+    with tf.variable_scope("confusion"):
+        confusion_matrix = tf.confusion_matrix(
+            labels=labels, predictions=pred_classes, num_classes=params.language_count
+        )
+        confusion_matrix_total = tf.Variable(
+            tf.zeros(shape=(params.language_count, params.language_count), dtype=tf.int32),
+            trainable=False,
+            name="confusion_matrix_total",
+            collections=[tf.GraphKeys.LOCAL_VARIABLES]
+        )
+        confusion_update_op = tf.assign_add(confusion_matrix_total, confusion_matrix)
+        confusion_matrix_total = tf.convert_to_tensor(confusion_matrix_total)
+
     if mode == tf.estimator.ModeKeys.TRAIN:
         tf.identity(accuracy_op, name='train_acc')
         tf.summary.scalar('train_accuracy', accuracy_op)
@@ -74,5 +88,8 @@ def base_model_fn(model_class, features, labels, mode, params):
         predictions=predictions,
         loss=loss,
         train_op=train_op,
-        eval_metric_ops={'accuracy': (accuracy, accuracy_op)}
+        eval_metric_ops={
+            'accuracy': (accuracy, accuracy_op),
+            'confusion': (confusion_matrix_total, confusion_update_op)
+        }
     )
