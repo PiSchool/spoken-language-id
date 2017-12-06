@@ -71,10 +71,10 @@ def get_params():
     # Parameters common to all models
     common_params = dict(
         spectrogram_bins=128,
-        language_count=176,
+        language_count=8,
         batch_size=16,
         optimizer='momentum',
-        learning_rate=0.003,
+        learning_rate=0.001,
         momentum=0.9,
         eval_percent=5,
         eval_frequency=100,
@@ -331,7 +331,7 @@ def evaluate(model_fn, run_config, params):
     params.set_from_map({
         'eval_epochs': 1,
         'eval_percent': 100,
-        'batch_size': 8
+        'batch_size': 1
     })
     model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
     input_fn, input_hook = get_inputs(params, validation=True)
