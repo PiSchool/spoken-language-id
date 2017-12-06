@@ -244,13 +244,15 @@ class BestCheckpointHook(tf.train.CheckpointSaverHook):
         self.last_count = run_values.results['count']
 
     def end(self, session):
-        if self.save and self.last_accuracy > self.current_best:
+        if self.last_accuracy > self.current_best:
             # We've finished the evaluation run and have a new best
             self.current_best = self.last_accuracy
-            self._save(session, session.run(self._global_step_tensor))
             tf.logging.info("New best accuracy {:.7f} ({:.0f} / {:.0f}), saved to {}.".format(
                 self.current_best, self.last_total, self.last_count, self._save_path
             ))
+
+            if self.save:
+                self._save(session, session.run(self._global_step_tensor))
 
         for l in self._listeners:
             l.end(session, last_step)
