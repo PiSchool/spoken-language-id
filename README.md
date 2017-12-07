@@ -14,11 +14,12 @@ To install the required libraries (tested on Ubuntu 17.11) run:
 
 1. Convert an audio file to a spectrogram:
 
-    python dataset_gen.py -z speech.wav -o .
+        python dataset_gen.py -z speech.wav -o .
 
 1. Obtain the prediction using a pre-trained model:
 
-    python main.py --model-dir your-trained-model/ --params your-trained-model/params.json --model combo --predict speech.png
+        python main.py --model-dir your-trained-model/ --params your-trained-model/params.json --model combo --predict speech.png
+
 
 ## Training the model from scratch
 
@@ -29,4 +30,4 @@ To install the required libraries (tested on Ubuntu 17.11) run:
 
 1. Train the model:
 
-    python main.py --model-dir your-trained-model/ --params your-trained-model/params.json --model combo --image-dir your-data/ --train-set your-data/train-set.csv --eval-set your-data/eval-set.csv
+        python main.py --model-dir your-trained-model/ --params your-trained-model/params.json --model combo --image-dir your-data/ --train-set your-data/train-set.csv --eval-set your-data/eval-set.csv
