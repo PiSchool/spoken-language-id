@@ -214,7 +214,7 @@ def get_inputs(params, validation=False):
         iterator = dataset.make_initializable_iterator()
         init_hook.iterator_init = iterator.initializer
         next_example, next_label = iterator.get_next()
-        return next_example, next_label
+        return {'sgram': next_example}, next_label
 
     return input_fn, init_hook
 

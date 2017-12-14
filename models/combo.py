@@ -4,10 +4,12 @@ from .base import CNNBaseModel
 
 class LanguidCombo(CNNBaseModel):
     def __init__(self, features, training, params):
-        batch_size = tf.shape(features)[0]
-        input_sgram = tf.reshape(features, [batch_size, -1, params.spectrogram_bins])
+        sgram_feature = features['sgram']
 
-        # Smaller kernels for less spectrogram bins (e.g. MFCC)
+        batch_size = tf.shape(sgram_feature)[0]
+        input_sgram = tf.reshape(sgram_feature, [batch_size, -1, params.spectrogram_bins])
+
+        # Smaller kernels for fewer spectrogram bins (e.g. MFCC)
         if params.spectrogram_bins < 30:
             kernels = [4, 2, 2, 2]
             pool_strides = [(2, 1), 1, 1, 1]
