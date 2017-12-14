@@ -334,7 +334,7 @@ def evaluate(model_fn, run_config, params):
     params.set_from_map({
         'eval_epochs': 1,
         'eval_percent': 100,
-        'batch_size': 1
+        'batch_size': 15
     })
     model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
     input_fn, input_hook = get_inputs(params, validation=True)
