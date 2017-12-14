@@ -38,7 +38,17 @@ def base_model_fn(model_class, features, labels, mode, params):
 
     # If predicting, no need to define loss etc.
     if mode == tf.estimator.ModeKeys.PREDICT:
-        return tf.estimator.EstimatorSpec(mode, predictions=predictions)
+        lang_list = tf.constant(params.language_list, shape=[params.language_count], dtype=tf.string)
+        return tf.estimator.EstimatorSpec(
+            mode,
+            predictions=predictions,
+            export_outputs={
+                'language': tf.estimator.export.ClassificationOutput(
+                    scores=pred_probabilities,
+                    classes=lang_list,
+                )
+            }
+        )
 
     onehot_labels = tf.one_hot(labels, depth=params.language_count)
     loss = tf.losses.softmax_cross_entropy(onehot_labels, logits)

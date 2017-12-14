@@ -65,12 +65,18 @@ tf.app.flags.DEFINE_string(
     default_value=None,
     docstring='Use the specified checkpoint file.'
 )
+tf.app.flags.DEFINE_string(
+    flag_name='export',
+    default_value=None,
+    docstring='Export a trained model to the specified directory.'
+)
 
 
 def get_params():
     # Parameters common to all models
     common_params = dict(
         spectrogram_bins=128,
+        spectrogram_max_len=1725,
         language_count=8,
         batch_size=16,
         optimizer='momentum',
@@ -218,6 +224,19 @@ def get_inputs(params, validation=False):
 
     return input_fn, init_hook
 
+def get_input_receiver(params):
+    feature_spec = {'sgram': tf.FixedLenFeature([params.spectrogram_bins, params.spectrogram_max_len], tf.float32)}
+    def serving_input_receiver_fn():
+        """An input receiver that expects a serialized tf.Example."""
+        serialized_tf_example = tf.placeholder(dtype=tf.string,
+                                            shape=[1],
+                                            name='input_tensor')
+        receiver_tensors = {'input': serialized_tf_example}
+        features = tf.parse_example(serialized_tf_example, feature_spec)
+        return tf.estimator.export.ServingInputReceiver(features, receiver_tensors)
+
+    return serving_input_receiver_fn
+
 
 class BestCheckpointHook(tf.train.CheckpointSaverHook):
     """Session hook that keeps saving the models with best accuracy so far."""
@@ -344,10 +363,19 @@ def evaluate(model_fn, run_config, params):
     tf.logging.info(metrics)
 
 
+def export(model_fn, run_config, params):
+    checkpoint_path = find_best_checkpoint(run_config)
+    serving_input_receiver_fn = get_input_receiver(params)
+    model = tf.estimator.Estimator(model_fn, params=params, config=run_config)
+    model.export_savedmodel(FLAGS.export, serving_input_receiver_fn, checkpoint_path=checkpoint_path)
+
+
 def train_or_predict(argv=None):
     model_fn, run_config, params = get_params()
 
-    if FLAGS.evaluate:
+    if FLAGS.export:
+        export(model_fn, run_config, params)
+    elif FLAGS.evaluate:
         evaluate(model_fn, run_config, params)
     elif FLAGS.predict_dir:
         filenames = os.listdir(FLAGS.predict_dir)
