@@ -38,7 +38,14 @@ def base_model_fn(model_class, features, labels, mode, params):
 
     # If predicting, no need to define loss etc.
     if mode == tf.estimator.ModeKeys.PREDICT:
-        lang_list = tf.constant(params.language_list, shape=[params.language_count], dtype=tf.string)
+        batch_size = tf.shape(features['sgram'])[0]
+        lang_list = tf.reshape(
+            tf.tile(
+                tf.constant(params.language_list, shape=[params.language_count], dtype=tf.string),
+                multiples=[batch_size]
+            ),
+            [batch_size, -1]
+        )
         return tf.estimator.EstimatorSpec(
             mode,
             predictions=predictions,
