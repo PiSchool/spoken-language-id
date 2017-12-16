@@ -350,6 +350,7 @@ def predict_single(model_fn, run_config, params, png_path):
 
 def evaluate(model_fn, run_config, params):
     # Set necessary parameters
+    run_config = run_config.replace(save_summary_steps=None)
     params.set_from_map({
         'eval_epochs': 1,
         'eval_percent': 100,
