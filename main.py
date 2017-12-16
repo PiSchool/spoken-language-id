@@ -224,13 +224,21 @@ def get_inputs(params, validation=False):
 
     return input_fn, init_hook
 
+
 def get_input_receiver(params):
-    feature_spec = {'sgram': tf.FixedLenFeature([params.spectrogram_bins, params.spectrogram_max_len], tf.float32)}
+    feature_spec = {
+        'sgram': tf.FixedLenSequenceFeature(
+            [params.spectrogram_bins],
+            tf.float32,
+            allow_missing=True
+        )
+    }
+
     def serving_input_receiver_fn():
         """An input receiver that expects a serialized tf.Example."""
         serialized_tf_example = tf.placeholder(dtype=tf.string,
-                                            shape=[1],
-                                            name='input_tensor')
+                                               shape=[1],
+                                               name='input_tensor')
         receiver_tensors = {'input': serialized_tf_example}
         features = tf.parse_example(serialized_tf_example, feature_spec)
         return tf.estimator.export.ServingInputReceiver(features, receiver_tensors)
