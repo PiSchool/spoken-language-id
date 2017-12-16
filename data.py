@@ -59,4 +59,4 @@ class TCData(object):
         if label is not None:
             label = tf.cast(label, tf.int32)
 
-        return image_data, label
+        return {'sgram': image_data}, label
