@@ -14,7 +14,7 @@ To install the required libraries (tested on Ubuntu 17.11) run:
 
 1. Convert an audio file to a spectrogram:
 
-        python dataset_gen.py -z speech.wav -o .
+        python data/dataset_gen.py -z speech.wav -o .
 
 1. Obtain the prediction using a pre-trained model:
 
