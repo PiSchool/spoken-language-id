@@ -31,3 +31,9 @@ To install the required libraries (tested on Ubuntu 17.11) run:
 1. Train the model:
 
         python main.py --model-dir your-trained-model/ --params your-trained-model/params.json --model combo --image-dir your-data/ --train-set your-data/train-set.csv --eval-set your-data/eval-set.csv
+
+# Author
+
+This project was developed by [Rymvidas Naktinis](https://github.com/naktinis) during [Pi School's AI programme](http://picampus-school.com/programme/school-of-ai/) in Fall 2017.
+
+![photo of Rymvidas Naktinis](http://picampus-school.com/wp-content/uploads/2017/11/IMG_2135-150x150.jpg)
