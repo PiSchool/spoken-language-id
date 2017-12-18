@@ -34,6 +34,6 @@ To install the required libraries (tested on Ubuntu 17.11) run:
 
 # Author
 
-This project was developed by [Rymvidas Naktinis](https://github.com/naktinis) during [Pi School's AI programme](http://picampus-school.com/programme/school-of-ai/) in Fall 2017.
+This project was developed by [Rimvydas Naktinis](https://github.com/naktinis) during [Pi School's AI programme](http://picampus-school.com/programme/school-of-ai/) in Fall 2017.
 
-![photo of Rymvidas Naktinis](http://picampus-school.com/wp-content/uploads/2017/11/IMG_2135-150x150.jpg)
+![photo of Rimvydas Naktinis](http://picampus-school.com/wp-content/uploads/2017/11/IMG_2135-150x150.jpg)
