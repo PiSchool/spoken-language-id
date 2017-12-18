@@ -12,7 +12,7 @@ import audioop
 import librosa
 import numpy as np
 
-import .utils
+import utils
 
 
 # A list of bad quality recordings
