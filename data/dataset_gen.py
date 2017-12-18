@@ -115,16 +115,7 @@ def generate_spectrograms(time_series, png_path, mfcc=False, verbose=False, augm
     if verbose:
         print("Preparing a spectrogram {}".format(png_path))
 
-    if mfcc:
-        spectrogram = librosa.core.logamplitude(
-            librosa.feature.mfcc(time_series, sr=44100, n_mfcc=20)
-        )
-    else:
-        spectrogram = librosa.core.logamplitude(
-            librosa.core.stft(time_series, window='hann', n_fft=1024, hop_length=512),
-            amin=0.0008,
-            ref=np.max,
-        )
+    spectrogram = utils.series_to_spectrogram(time_series, mfcc)
 
     # Write the original spectrogram
     _write_spectrogram(spectrogram, png_path)
