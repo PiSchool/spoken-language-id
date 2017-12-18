@@ -11,7 +11,8 @@ from collections import Counter
 import audioop
 import librosa
 import numpy as np
-from PIL import Image
+
+import .utils
 
 
 # A list of bad quality recordings
@@ -106,16 +107,7 @@ def split(entries, at=10):
 
 
 def _write_spectrogram(spectrogram, png_path):
-    # Map to 0-255 range
-    spectrogram = spectrogram[:128, :]
-    spectrogram = np.abs(spectrogram)
-    spectrogram -= np.min(spectrogram)
-    spectrogram *= 255. / np.max(spectrogram)
-    spectrogram = np.flipud(abs(255. - spectrogram))
-
-    # Write the image to a file
-    image = Image.fromarray(spectrogram[-128:, :])
-    image = image.convert('L')
+    image = utils.spectrogram_to_image(spectrogram)
     image.save(png_path)
 
 

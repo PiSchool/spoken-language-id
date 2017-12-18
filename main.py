@@ -10,7 +10,7 @@ from models.combo import LanguidCombo
 from models.rnn import LanguidRNN
 from models.cnn import LanguidCNN
 from models.montavon import LanguidMontavon
-from data import TCData
+from data.dataset import TCData
 
 
 # Set default flags for the output directories
