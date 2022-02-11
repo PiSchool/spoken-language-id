@@ -22,7 +22,7 @@ olefile==0.44
 pbr==3.1.1
 pillow>=6.2.0
 pkg-resources==0.0.0
-protobuf==3.4.0
+protobuf==3.15.0
 pyparsing==2.2.0
 python-dateutil==2.6.1
 pytz==2017.3
